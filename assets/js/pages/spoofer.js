@@ -1,0 +1,327 @@
+/* ============================================================
+ *  assets/js/pages/spoofer.js — Auto Spoof massal (SPA-ready)
+ *  Tiap aset = 1 request ke api/spoof.php, dijalankan paralel (CONCURRENCY).
+ * ============================================================ */
+(function () {
+  'use strict';
+
+  const CONCURRENCY = 2;
+  const POLL_MS     = 2000;
+  const POLL_MAX    = 60;
+  const STORE_KEY   = 'arrr_spoof_settings';
+
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  let items   = [];     // { source, label, file?, status, newId, error }
+  let running = false;
+  let stopped = false;
+  let files   = [];
+
+  /* ============================================================
+     STORAGE (per browser) — API key hanya kalau "Ingat" dicentang
+     ============================================================ */
+  function loadSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+      if (s.creatorType) $('spCreatorType').value = s.creatorType;
+      if (s.creatorId)   $('spCreatorId').value   = s.creatorId;
+      if (s.apiKey) {
+        $('spApiKey').value = s.apiKey;
+        $('spRemember').checked = true;
+      }
+    } catch (e) { /* storage diblok → abaikan */ }
+  }
+
+  function saveSettings() {
+    try {
+      const s = {
+        creatorType: $('spCreatorType').value,
+        creatorId:   $('spCreatorId').value.trim(),
+      };
+      if ($('spRemember').checked) s.apiKey = $('spApiKey').value.trim();
+      localStorage.setItem(STORE_KEY, JSON.stringify(s));
+    } catch (e) { /* abaikan */ }
+  }
+
+  /* ============================================================
+     PARSE INPUT
+     ============================================================ */
+  // Ambil angka pertama tiap token: "123", "rbxassetid://123", ".../library/123/Nama"
+  function parseIds(text) {
+    const seen = new Set();
+    const out  = [];
+    text.split(/[\s,;]+/).forEach(tok => {
+      const m = tok.match(/\d{3,20}/);
+      if (m && !seen.has(m[0])) {
+        seen.add(m[0]);
+        out.push(m[0]);
+      }
+    });
+    return out;
+  }
+
+  function updateCounts() {
+    const ids = parseIds($('spIds').value);
+    $('spIdCount').textContent = ids.length + ' ID terdeteksi';
+    $('spFileCount').textContent = files.length
+      ? files.length + ' file: ' + files.slice(0, 5).map(f => f.name).join(', ') + (files.length > 5 ? ', …' : '')
+      : '0 file dipilih';
+  }
+
+  function activeTab() {
+    const t = document.querySelector('.sp-tab.active');
+    return t ? t.dataset.spTab : 'ids';
+  }
+
+  /* ============================================================
+     RENDER
+     ============================================================ */
+  const STATUS_LABEL = { wait: 'Antri', run: 'Proses…', ok: 'Berhasil', err: 'Gagal' };
+
+  function renderRows() {
+    const body = $('spRows');
+    if (!body) return;   // pindah halaman (SPA) saat proses jalan
+    if (!items.length) {
+      body.innerHTML = '<tr class="sp-empty"><td colspan="4">Hasil muncul di sini.</td></tr>';
+      return;
+    }
+    body.innerHTML = items.map((it, i) => `
+      <tr>
+        <td>${i + 1}</td>
+        <td class="sp-mono">${esc(it.label)}</td>
+        <td><span class="sp-status ${it.status}">${esc(it.status === 'err' ? it.error : (it.note || STATUS_LABEL[it.status]))}</span></td>
+        <td class="sp-mono">${it.newId ? esc(it.newId) : '—'}</td>
+      </tr>`).join('');
+  }
+
+  function renderProgress() {
+    if (!$('spProgressBar')) return;
+    const done = items.filter(i => i.status === 'ok' || i.status === 'err').length;
+    const ok   = items.filter(i => i.status === 'ok').length;
+    const err  = items.filter(i => i.status === 'err').length;
+    $('spProgressBar').style.width = items.length ? (done / items.length * 100) + '%' : '0';
+    $('spProgressText').textContent = items.length
+      ? `${done}/${items.length} selesai · ${ok} berhasil · ${err} gagal${running ? (stopped ? ' · berhenti…' : ' · jalan') : ''}`
+      : 'Belum ada proses';
+  }
+
+  function renderOutput() {
+    if (!$('spOutput')) return;
+    const ok  = items.filter(i => i.status === 'ok');
+    const fmt = $('spFormat').value;
+    let text  = '';
+    switch (fmt) {
+      case 'rbx':   text = ok.map(i => 'rbxassetid://' + i.newId).join('\n'); break;
+      case 'comma': text = ok.map(i => i.newId).join(', '); break;
+      case 'map':   text = ok.map(i => i.label + ' → ' + i.newId).join('\n'); break;
+      case 'lua':
+        text = 'return {\n' + ok.map(i => /^\d+$/.test(i.label)
+          ? `\t[${i.label}] = ${i.newId},`
+          : `\t[${JSON.stringify(i.label)}] = ${i.newId},`).join('\n') + '\n}';
+        break;
+      default:      text = ok.map(i => i.newId).join('\n');
+    }
+    $('spOutput').value = ok.length ? text : '';
+  }
+
+  function renderAll() {
+    renderRows();
+    renderProgress();
+    renderOutput();
+  }
+
+  /* ============================================================
+     API
+     ============================================================ */
+  async function callApi(body, isForm) {
+    const res = await fetch(window.__apiUrls.spoof, isForm
+      ? { method: 'POST', body }
+      : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      throw new Error('Respons server tidak valid (HTTP ' + res.status + ')');
+    }
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async function processItem(it, cfg) {
+    it.status = 'run';
+    renderAll();
+
+    let data;
+    if (it.file) {
+      const fd = new FormData();
+      fd.append('action', 'upload');
+      fd.append('apiKey', cfg.apiKey);
+      fd.append('creatorType', cfg.creatorType);
+      fd.append('creatorId', cfg.creatorId);
+      if (cfg.name) fd.append('name', cfg.name);
+      fd.append('file', it.file);
+      data = await callApi(fd, true);
+    } else {
+      data = await callApi({
+        action: 'reupload',
+        apiKey: cfg.apiKey,
+        creatorType: cfg.creatorType,
+        creatorId: cfg.creatorId,
+        assetId: it.source,
+        name: cfg.name ? cfg.name + ' ' + it.source : '',
+      });
+    }
+
+    // Roblox masih memproses → polling status operasi
+    for (let n = 0; !data.assetId && data.operationId && n < POLL_MAX; n++) {
+      it.note = 'Menunggu Roblox…';
+      renderRows();
+      await sleep(POLL_MS);
+      data = await callApi({ action: 'status', apiKey: cfg.apiKey, operationId: data.operationId });
+    }
+    if (!data.assetId) throw new Error('Timeout menunggu Roblox — cek Creator Dashboard nanti');
+
+    it.newId  = String(data.assetId);
+    it.note   = '';
+    it.status = 'ok';
+  }
+
+  async function worker(queue, cfg) {
+    while (queue.length && !stopped) {
+      const it = queue.shift();
+      try {
+        await processItem(it, cfg);
+      } catch (e) {
+        it.status = 'err';
+        it.error  = e.message || 'Gagal';
+      }
+      renderAll();
+    }
+  }
+
+  /* ============================================================
+     START / STOP
+     ============================================================ */
+  async function start() {
+    if (running) return;
+
+    const cfg = {
+      apiKey:      $('spApiKey').value.trim(),
+      creatorType: $('spCreatorType').value,
+      creatorId:   $('spCreatorId').value.trim(),
+      name:        $('spName').value.trim(),
+    };
+    if (!cfg.apiKey) return showToast('Masukkan API key Roblox dulu', 'error');
+    if (!/^\d+$/.test(cfg.creatorId)) return showToast('Isi User ID / Group ID kamu (angka)', 'error');
+
+    if (activeTab() === 'files') {
+      if (!files.length) return showToast('Pilih file dulu', 'error');
+      items = files.map(f => ({ source: f.name, label: f.name, file: f, status: 'wait' }));
+    } else {
+      const ids = parseIds($('spIds').value);
+      if (!ids.length) return showToast('Tempel minimal 1 asset ID', 'error');
+      items = ids.map(id => ({ source: id, label: id, status: 'wait' }));
+    }
+
+    saveSettings();
+    running = true;
+    stopped = false;
+    $('spStart').disabled = true;
+    $('spStop').disabled  = false;
+    renderAll();
+
+    const queue = items.slice();
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, () => worker(queue, cfg)));
+
+    // Item yang belum sempat jalan karena di-stop
+    items.forEach(it => {
+      if (it.status === 'wait') { it.status = 'err'; it.error = 'Dibatalkan'; }
+    });
+
+    running = false;
+    if ($('spStart')) {
+      $('spStart').disabled = false;
+      $('spStop').disabled  = true;
+    }
+    renderAll();
+
+    const ok = items.filter(i => i.status === 'ok').length;
+    showToast(`${ok}/${items.length} aset berhasil di-upload`, ok === items.length ? 'success' : 'warning', 3500);
+  }
+
+  function copyOutput() {
+    const text = $('spOutput').value;
+    if (!text) return showToast('Belum ada hasil', 'warning');
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('Asset ID di-copy'))
+      .catch(() => { $('spOutput').select(); document.execCommand('copy'); showToast('Asset ID di-copy'); });
+  }
+
+  function downloadOutput() {
+    const text = $('spOutput').value;
+    if (!text) return showToast('Belum ada hasil', 'warning');
+    const isLua = $('spFormat').value === 'lua';
+    const blob = new Blob([text], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = isLua ? 'SpoofedAssets.lua' : 'spoofed-asset-ids.txt';
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  /* ============================================================
+     INIT
+     ============================================================ */
+  function initSpoofer() {
+    const root = $('spStart');
+    if (!root || root.dataset.bound) return;
+    root.dataset.bound = '1';
+
+    loadSettings();
+
+    document.querySelectorAll('.sp-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.sp-tab').forEach(t => t.classList.toggle('active', t === tab));
+        document.querySelectorAll('.sp-pane').forEach(p => p.classList.toggle('active', p.dataset.spPane === tab.dataset.spTab));
+      });
+    });
+
+    $('spToggleKey').addEventListener('click', () => {
+      const input = $('spApiKey');
+      input.type = input.type === 'password' ? 'text' : 'password';
+      $('spToggleKey').textContent = input.type === 'password' ? 'Lihat' : 'Tutup';
+    });
+
+    $('spRemember').addEventListener('change', saveSettings);
+    $('spIds').addEventListener('input', updateCounts);
+    $('spFiles').addEventListener('change', (e) => {
+      files = Array.from(e.target.files || []);
+      updateCounts();
+    });
+
+    const drop = $('spDrop');
+    ['dragenter', 'dragover'].forEach(ev => drop.addEventListener(ev, () => drop.classList.add('drag')));
+    ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove('drag')));
+
+    root.addEventListener('click', start);
+    $('spStop').addEventListener('click', () => { stopped = true; renderProgress(); });
+    $('spFormat').addEventListener('change', renderOutput);
+    $('spCopy').addEventListener('click', copyOutput);
+    $('spDownload').addEventListener('click', downloadOutput);
+
+    files = [];
+    updateCounts();
+    renderAll();
+  }
+
+  window.initSpoofer = initSpoofer;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSpoofer);
+  } else {
+    initSpoofer();
+  }
+  window.addEventListener('spa:navigated', initSpoofer);
+})();

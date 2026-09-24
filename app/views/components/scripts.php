@@ -18,6 +18,7 @@ $scripts = [
     'js/pages/library.js',
     'js/pages/docs.js',
     'js/pages/prompt.js',
+    'js/pages/spoofer.js',
     'js/core/spa.js',
 ];
 ?>
@@ -35,6 +36,7 @@ window.__loginUrl   = <?= json_encode(url('login')) ?>;
 window.__apiUrls = {
   convert:  <?= json_encode(BASE_URL . '/api/convert.php') ?>,
   generate: <?= json_encode(BASE_URL . '/api/generate.php') ?>,
+  spoof:    <?= json_encode(BASE_URL . '/api/spoof.php') ?>,
 };
 window.__samplesUrl = <?= json_encode(BASE_URL . '/samples/') ?>;
 </script>
