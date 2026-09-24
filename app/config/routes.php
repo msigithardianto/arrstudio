@@ -11,6 +11,7 @@ $router->get('library',   'LibraryController@index');
 $router->get('docs',      'DocsController@index');
 $router->get('prompt',    'PromptController@index');
 $router->get('spoofer',   'SpooferController@index');
+$router->get('ytmp3',     'YtMp3Controller@index');
 
 // ============================================================
 // AUTH
@@ -29,3 +30,4 @@ $router->get('auth_discord_callback', 'AuthController@discordCallback');
 $router->post('api_convert',  'ConvertApiController@handle');
 $router->post('api_generate', 'GenerateApiController@handle');
 $router->post('api_spoof',    'SpoofApiController@handle');
+$router->post('api_ytmp3',    'YtMp3ApiController@handle');

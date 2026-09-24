@@ -10,6 +10,7 @@ $navItems = [
     ['id' => 'docs',      'label' => 'Docs', 'url' => url('docs')],
     ['id' => 'prompt',    'label' => 'Prompt', 'url' => url('prompt')],
     ['id' => 'spoofer',   'label' => 'Spoofer', 'url' => url('spoofer')],
+    ['id' => 'ytmp3',     'label' => 'YT → MP3', 'url' => url('ytmp3')],
 ];
 
 // ==== AMBIL DATA USER ====
