@@ -293,10 +293,12 @@
   /* ============================================================
      IZIN GAME MASSAL — helper dipakai juga oleh ytmp3.js
      ============================================================ */
-  // → {granted:[...], failed:{id: alasan}}
+  // → {granted:[...], failed:{id: alasan}, universeId, placeId?}
+  // placeId terisi kalau ID yang diisi ternyata Place ID (server mengonversi ke Universe ID)
   async function grantAssets(apiKey, universeId, ids, onProgress) {
     const granted = [];
     const failed  = {};
+    let placeId = null;
     // Maks 200 per request (batas server)
     for (let i = 0; i < ids.length; i += 200) {
       const part = ids.slice(i, i + 200);
@@ -305,20 +307,38 @@
         const r = await callApi({ action: 'grant', apiKey, universeId, assetIds: part });
         granted.push(...r.granted);
         Object.assign(failed, r.failed || {});
+        if (r.placeId && r.universeId) {
+          placeId = r.placeId;
+          universeId = r.universeId;   // batch berikutnya langsung pakai Universe ID
+          saveUniverseId(universeId);
+        }
       } catch (e) {
         part.forEach(id => { failed[id] = e.message; });
       }
     }
-    return { granted, failed };
+    return { granted, failed, universeId, placeId };
   }
   window.ArrrGrant = grantAssets;
+
+  /** Simpan Universe ID hasil konversi ke setting bersama (dipakai semua halaman) */
+  function saveUniverseId(id) {
+    try {
+      const s = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
+      s.universeId = id;
+      localStorage.setItem(STORE_KEY, JSON.stringify(s));
+    } catch (e) { /* abaikan */ }
+    ['spUniverseId', 'ytUniverseId', 'hsUniverseId'].forEach(f => { if ($(f)) $(f).value = id; });
+  }
 
   function grantSummaryHtml(r) {
     const failedIds = Object.keys(r.failed);
     // Kelompokkan alasan yang sama biar tidak panjang
     const byReason = {};
     failedIds.forEach(id => { (byReason[r.failed[id]] = byReason[r.failed[id]] || []).push(id); });
-    const rows = [`<li class="${r.granted.length ? 'ok' : 'warn'}">${r.granted.length} aset diizinkan</li>`]
+    const rows = (r.placeId
+      ? [`<li class="warn">${esc(r.placeId)} itu Place ID → dipakai Universe ID ${esc(r.universeId)} (sudah disimpan)</li>`]
+      : [])
+      .concat([`<li class="${r.granted.length ? 'ok' : 'warn'}">${r.granted.length} aset diizinkan${r.universeId ? ' ke game ' + esc(r.universeId) : ''}</li>`])
       .concat(Object.entries(byReason).map(([reason, list]) =>
         `<li class="err">${list.length} gagal: ${esc(reason)} <span class="sp-mono">(${esc(list.slice(0, 5).join(', '))}${list.length > 5 ? ', …' : ''})</span></li>`));
     return `<p><b>${failedIds.length ? 'Sebagian gagal' : 'Semua aset sudah diizinkan ke game'}</b></p><ul>${rows.join('')}</ul>`;
@@ -381,6 +401,12 @@
             rows.push(line(!r.missing.includes(op), 'Scope ' + op + (r.missing.includes(op) ? ' — belum ada' : ''))));
         } else {
           rows.push(line(null, 'Scope tidak bisa dibaca dari Roblox — lihat hasil tes download'));
+        }
+        if (r.scopes.length) {
+          const miss = (r.missingOptional || []).includes('asset-permissions:write');
+          rows.push(line(miss ? null : true, 'Scope asset-permissions:write' + (miss
+            ? ' — belum ada (dibutuhkan untuk "Izinkan ke game": API key → Select API System → asset-permissions → write)'
+            : ' (untuk izin game)')));
         }
         if (r.rawScopes) rows.push(line(null, 'Data scope dari Roblox: ' + JSON.stringify(r.rawScopes).slice(0, 300)));
       } else {

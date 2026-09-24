@@ -60,7 +60,8 @@ $isLoggedIn = Auth::check();
           <summary>Cara bikin API key</summary>
           <ol>
             <li>Buka <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com → Credentials</a> → <b>Create API Key</b>.</li>
-            <li>Access Permissions: tambah <b>Assets</b> (<code>asset:read</code>, <code>asset:write</code>) dan <b>Legacy Assets</b> (<code>legacy-asset:manage</code>) untuk download dari asset ID.</li>
+            <li>Access Permissions: tambah <b>Assets</b> (<code>asset:read</code>, <code>asset:write</code>) dan <b>Legacy Assets</b> (<code>legacy-asset:manage</code>) untuk download dari asset ID.
+              Untuk "Izinkan ke game" tambah juga <b>asset-permissions</b> (<code>asset-permissions:write</code>).</li>
             <li>Accepted IP: isi IP server ini, atau <code>0.0.0.0/0</code> untuk testing.</li>
             <li>Untuk upload ke grup, API key harus dibuat dari grup tersebut.</li>
             <li>User ID ada di URL profil: roblox.com/users/<b>123456</b>/profile.</li>
@@ -144,7 +145,8 @@ $isLoggedIn = Auth::check();
       </div>
       <p class="sp-grant-desc">
         Kasih izin banyak aset sekaligus supaya bisa dipakai di game kamu (tidak perlu buka Permissions satu-satu).
-        Isi <b>Universe ID</b> di card 01. Aset &amp; game harus milik akun / grup yang sama dengan API key.
+        Isi <b>Universe ID</b> di card 01 (Place ID juga bisa — otomatis dikonversi). Aset &amp; game harus milik
+        akun / grup yang sama dengan API key, dan API key butuh scope <code>asset-permissions:write</code>.
       </p>
       <textarea id="spGrantIds" class="sp-input sp-textarea sp-grant-ids" spellcheck="false"
         placeholder="Asset ID (satu per baris / pisah koma) — atau klik &quot;Pakai hasil di atas&quot;"></textarea>
