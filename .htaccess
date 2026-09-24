@@ -3,8 +3,8 @@
 # ============================================================
 RewriteEngine On
 
-# Blokir akses ke app/
-RewriteRule ^app/ - [F,L]
+# Blokir akses ke app/ dan storage/
+RewriteRule ^(app|storage)/ - [F,L]
 
 # Jangan rewrite file/folder yang ada (assets, api, samples, dll)
 RewriteCond %{REQUEST_FILENAME} -f [OR]
@@ -24,5 +24,10 @@ RewriteRule ^ index.php [L,QSA]
     Header set X-Content-Type-Options "nosniff"
     Header set X-Frame-Options "SAMEORIGIN"
 </IfModule>
+
+# File sensitif / khusus development
+<FilesMatch "^(\.env.*|server\.php)$">
+    Require all denied
+</FilesMatch>
 
 Options -Indexes

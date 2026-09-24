@@ -6,11 +6,9 @@ class PromptController extends Controller
     public function index(): void
     {
         $this->render('prompt/index', [
-            'pageTitle'    => 'ARRR Studio — Prompt Guide',
-            'activePage'   => 'prompt',
-            'navVariant'   => 'app',
-            'extraStyles'  => ['partials/styles-prompt'],
-            'extraScripts' => ['assets/prompt.js'],
+            'pageTitle'  => 'ARRR Studio — Prompt Guide',
+            'activePage' => 'prompt',
+            'styles'     => ['prompt'],
         ]);
     }
 }

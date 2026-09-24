@@ -1,37 +1,36 @@
+<?php
+// app/views/layouts/master.php — kerangka HTML semua halaman
+// Variabel: $pageTitle, $activePage, $navVariant, $styles, $content
+?>
 <!DOCTYPE html>
 <html lang="id" class="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title><?= e($pageTitle ?? 'ARRR Studio') ?></title>
+<link rel="icon" type="image/png" href="<?= asset('img/logo.png') ?>">
 
-<link rel="stylesheet" href="<?= asset('app.css') ?>">
+<link rel="stylesheet" href="<?= asset_v('css/app.css') ?>">
 
-<?php View::partial('partials/styles'); ?>
-<?php View::partial('partials/styles-nav'); ?>
-<?php View::partial('partials/loader-styles'); ?>
+<?php /* Style permanen (tidak di-swap SPA) */ ?>
+<?php View::style('base', 'base'); ?>
+<?php View::style('nav', 'nav'); ?>
+<?php View::style('loader', 'loader'); ?>
 
-<?php if (!empty($extraStyles)): ?>
-  <?php foreach ((array)$extraStyles as $style): ?>
-    <?php View::partial($style); ?>
-  <?php endforeach; ?>
-<?php endif; ?>
-
+<?php /* Style khusus halaman (di-swap SPA) */ ?>
+<?php foreach ((array)($styles ?? []) as $style): ?>
+<?php View::style($style, 'pages/' . $style); ?>
+<?php endforeach; ?>
 </head>
 <body>
 
-<?php View::partial('partials/loader'); ?>
+<?php View::component('loader'); ?>
 
-<?php View::partial('layouts/nav', [
-    'activePage' => $activePage ?? 'converter',
-    'navVariant' => $navVariant ?? 'app',
-]); ?>
+<?php View::component('navbar'); ?>
 
 <?= $content ?>
 
-<?php View::partial('layouts/footer', [
-    'extraScripts' => $extraScripts ?? [],
-]); ?>
+<?php View::component('scripts'); ?>
 
 </body>
 </html>

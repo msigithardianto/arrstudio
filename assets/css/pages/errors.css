@@ -1,0 +1,82 @@
+/* assets/css/pages/errors.css — halaman error (404) */
+.error-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 40px 20px;
+  background:
+    radial-gradient(ellipse 600px 400px at 50% 50%, rgba(212, 175, 55, 0.04), transparent 70%),
+    var(--bg, #0a0a0d);
+}
+
+.error-card {
+  text-align: center;
+  padding: 60px 40px;
+  background: linear-gradient(180deg, #17171d, #121216);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+  border-radius: 20px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  max-width: 420px;
+  width: 100%;
+  animation: errorFadeIn 0.5s cubic-bezier(.22,1,.36,1);
+}
+@keyframes errorFadeIn {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.error-code {
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-size: 96px;
+  font-weight: 800;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  background: linear-gradient(135deg, #f4d03f 0%, #d4af37 60%, #8a7328 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 16px;
+  text-shadow: 0 0 40px rgba(212, 175, 55, 0.3);
+}
+
+.error-title {
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #e8e8ec;
+  margin-bottom: 10px;
+  letter-spacing: 0.02em;
+}
+
+.error-desc {
+  font-family: 'Inter', 'Segoe UI', Roboto, sans-serif;
+  font-size: 13px;
+  color: #8a8a96;
+  line-height: 1.6;
+  margin-bottom: 28px;
+}
+
+.error-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #8a7328, #d4af37);
+  color: #0a0a0d;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  font-family: inherit;
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 20px rgba(212, 175, 55, 0.2);
+}
+.error-btn:hover {
+  background: linear-gradient(135deg, #d4af37, #f4d03f);
+  box-shadow: 0 0 30px rgba(212, 175, 55, 0.4);
+  transform: translateY(-1px);
+}
+.error-btn:active {
+  transform: translateY(0) scale(0.98);
+}

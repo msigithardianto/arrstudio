@@ -4,68 +4,43 @@
 abstract class Controller
 {
     /**
-     * Render view + layout, langsung output
+     * Render view di dalam layout master.
+     *
+     * Data umum layout:
+     *  - pageTitle  : <title>
+     *  - activePage : id menu navbar yang aktif
+     *  - navVariant : 'app' (pakai navbar) | 'landing' (tanpa navbar)
+     *  - styles     : CSS khusus halaman, nama file di assets/css/pages/ (tanpa .css)
      */
     protected function render(string $view, array $data = []): void
     {
-        View::render($view, $data);
+        View::render($view, $data + [
+            'pageTitle'  => config('app.name'),
+            'activePage' => '',
+            'navVariant' => 'app',
+            'styles'     => [],
+        ]);
     }
 
-    /**
-     * Return JSON response + exit
-     */
     protected function json($data, int $status = 200): void
     {
         Response::json($data, $status);
     }
 
-    /**
-     * Redirect ke URL + exit
-     */
     protected function redirect(string $url): void
     {
         Response::redirect($url);
     }
 
-    /**
-     * Ambil input dari POST/GET
-     */
     protected function input(string $key, $default = null)
     {
         return Request::input($key, $default);
     }
 
-    /**
-     * Ambil POST saja
-     */
-    protected function post(string $key, $default = null)
-    {
-        return Request::post($key, $default);
-    }
-
-    /**
-     * Ambil GET saja
-     */
-    protected function get(string $key, $default = null)
-    {
-        return Request::get($key, $default);
-    }
-
-    /**
-     * Cek apakah request POST
-     */
-    protected function isPost(): bool
-    {
-        return Request::isPost();
-    }
-
-    /**
-     * Kirim 404
-     */
     protected function abort404(): void
     {
         Response::status(404);
-        $this->render('errors/404');
+        $this->render('errors/404', ['pageTitle' => '404 — Halaman tidak ditemukan', 'styles' => ['errors']]);
         exit;
     }
 }

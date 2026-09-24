@@ -1,0 +1,393 @@
+/* assets/css/pages/library.css */
+  /* ============================================================
+     PAGE WRAP
+     ============================================================ */
+  .page-wrap {
+    flex: 1;
+    overflow-y: auto;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% 0%, rgba(212, 175, 55, 0.05), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 85% 100%, rgba(192, 192, 200, 0.03), transparent 60%),
+      var(--bg);
+    position: relative;
+  }
+  .page-inner {
+    max-width: 1300px;
+    margin: 0 auto;
+    padding: 48px 40px 120px;
+  }
+
+  /* ============================================================
+     HERO
+     ============================================================ */
+  .page-hero {
+    margin-bottom: 32px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--edge);
+  }
+  .page-hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 5px 12px;
+    background: linear-gradient(135deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+    border: 1px solid rgba(212, 175, 55, 0.3);
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+  .page-hero-eyebrow::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--gold);
+    box-shadow: 0 0 8px var(--gold);
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .page-title {
+    font-size: 38px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #f4f4f6 0%, #d4af37 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 12px;
+  }
+  .page-sub {
+    color: var(--text-dim);
+    font-size: 15px;
+    line-height: 1.6;
+    max-width: 620px;
+  }
+
+  /* ============================================================
+     TOOLBAR
+     ============================================================ */
+  .lib-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+  }
+
+  .lib-search-wrap {
+    flex: 1;
+    min-width: 240px;
+    position: relative;
+  }
+  .lib-search {
+    width: 100%;
+    padding: 11px 14px 11px 40px;
+    background: linear-gradient(180deg, #17171d, #121216);
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    color: var(--text);
+    font-size: 13.5px;
+    font-family: inherit;
+    outline: none;
+    transition: all 0.15s ease;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238a8a96' stroke-width='2'><circle cx='11' cy='11' r='8'/><line x1='21' y1='21' x2='16.65' y2='16.65'/></svg>");
+    background-repeat: no-repeat;
+    background-position: 14px center;
+  }
+  .lib-search:focus {
+    border-color: rgba(212, 175, 55, 0.4);
+    box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.08);
+  }
+  .lib-search::placeholder { color: var(--text-mute); }
+
+  .lib-filters {
+    display: flex;
+    gap: 6px;
+    padding: 4px;
+    background: rgba(10, 10, 13, 0.6);
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+  }
+  .lib-filter {
+    padding: 7px 14px;
+    background: transparent;
+    border: none;
+    border-radius: 8px;
+    color: var(--text-dim);
+    font-size: 12px;
+    font-weight: 600;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    white-space: nowrap;
+  }
+  .lib-filter:hover { color: var(--text); background: rgba(192, 192, 200, 0.05); }
+  .lib-filter.active {
+    color: #f4f4f6;
+    background: linear-gradient(180deg, rgba(212, 175, 55, 0.15), rgba(212, 175, 55, 0.05));
+    box-shadow: inset 0 1px 0 rgba(212, 175, 55, 0.2);
+  }
+
+  /* ============================================================
+     GRID
+     ============================================================ */
+  .lib-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+  }
+
+  /* ============================================================
+     CARD
+     ============================================================ */
+  .lib-card {
+    background: linear-gradient(180deg, #17171d, #121216);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(.22,1,.36,1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .lib-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--gold), transparent);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    z-index: 3;
+  }
+  .lib-card:hover {
+    border-color: rgba(212, 175, 55, 0.4);
+    transform: translateY(-4px);
+    box-shadow:
+      0 16px 40px rgba(0, 0, 0, 0.5),
+      0 0 40px rgba(212, 175, 55, 0.1);
+  }
+  .lib-card:hover::before { opacity: 1; }
+
+  .lib-card-preview {
+    height: 180px;
+    background: #0e0e12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    position: relative;
+    border-bottom: 1px solid var(--edge);
+  }
+  .lib-card-preview iframe {
+    width: 800px;
+    height: 600px;
+    border: none;
+    transform: scale(0.34);
+    transform-origin: center;
+    pointer-events: none;
+    background: #121216;
+    flex-shrink: 0;
+  }
+  .lib-card-preview::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(180deg, transparent 50%, rgba(14, 14, 18, 0.7));
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  .lib-card-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 10, 13, 0.7);
+    backdrop-filter: blur(3px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    z-index: 2;
+  }
+  .lib-card:hover .lib-card-overlay { opacity: 1; }
+  .lib-card-overlay-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 9px 16px;
+    border-radius: 9px;
+    font-size: 12.5px;
+    font-weight: 700;
+    font-family: inherit;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    border: 1px solid transparent;
+  }
+  .lib-card-overlay-btn.primary {
+    background: linear-gradient(135deg, #8a7328, #d4af37);
+    color: #0a0a0d;
+    box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
+  }
+  .lib-card-overlay-btn.primary:hover {
+    background: linear-gradient(135deg, #d4af37, #f4d03f);
+    box-shadow: 0 0 30px rgba(212, 175, 55, 0.6);
+  }
+  .lib-card-overlay-btn.ghost {
+    background: rgba(192, 192, 200, 0.1);
+    border-color: rgba(192, 192, 200, 0.2);
+    color: var(--silver);
+  }
+  .lib-card-overlay-btn.ghost:hover {
+    background: rgba(192, 192, 200, 0.18);
+    color: #f4f4f6;
+  }
+
+  .lib-card-body {
+    padding: 16px 18px 18px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  .lib-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+  }
+  .lib-card-name {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: 0.01em;
+    line-height: 1.3;
+  }
+  .lib-card-badges {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .lib-badge {
+    font-size: 9px;
+    font-weight: 800;
+    padding: 3px 7px;
+    border-radius: 5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .lib-badge.popular {
+    background: rgba(212, 175, 55, 0.15);
+    color: var(--gold);
+    border: 1px solid rgba(212, 175, 55, 0.3);
+  }
+  .lib-badge.new {
+    background: rgba(34, 197, 94, 0.15);
+    color: #22c55e;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+  }
+  .lib-badge.featured {
+    background: rgba(168, 85, 247, 0.15);
+    color: #c084fc;
+    border: 1px solid rgba(168, 85, 247, 0.3);
+  }
+  .lib-badge.ui {
+    background: rgba(96, 165, 250, 0.15);
+    color: #60a5fa;
+    border: 1px solid rgba(96, 165, 250, 0.3);
+  }
+
+  .lib-card-desc {
+    font-size: 12.5px;
+    color: var(--text-dim);
+    line-height: 1.6;
+    margin-bottom: 14px;
+    flex: 1;
+  }
+
+  .lib-card-meta {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding-top: 12px;
+    border-top: 1px solid var(--edge);
+  }
+  .lib-chip {
+    padding: 3px 8px;
+    background: rgba(192, 192, 200, 0.05);
+    border: 1px solid rgba(192, 192, 200, 0.08);
+    border-radius: 5px;
+    font-size: 10.5px;
+    color: var(--silver-dim);
+    font-family: var(--mono);
+  }
+
+  .lib-empty {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 80px 20px;
+    color: var(--text-mute);
+  }
+  .lib-empty-icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+  .lib-empty-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-bottom: 6px;
+  }
+  .lib-empty-desc {
+    font-size: 13px;
+  }
+
+  .lib-skeleton {
+    background: linear-gradient(180deg, #17171d, #121216);
+    border: 1px solid var(--edge);
+    border-radius: 14px;
+    overflow: hidden;
+    height: 320px;
+    position: relative;
+  }
+  .lib-skeleton::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg,
+      transparent 0%,
+      rgba(212, 175, 55, 0.05) 50%,
+      transparent 100%);
+    animation: shimmer 1.5s infinite;
+  }
+  @keyframes shimmer {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+  }
+
+  @media (max-width: 900px) {
+    .page-inner { padding: 32px 24px 80px; }
+    .page-title { font-size: 30px; }
+    .lib-grid { grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+  }
+  @media (max-width: 600px) {
+    .page-inner { padding: 24px 16px 60px; }
+    .page-title { font-size: 26px; }
+    .lib-grid { grid-template-columns: 1fr; }
+    .lib-toolbar { flex-direction: column; align-items: stretch; }
+    .lib-filters { overflow-x: auto; }
+  }
