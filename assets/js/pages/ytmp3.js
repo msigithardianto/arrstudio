@@ -575,7 +575,8 @@ return AudioCompensation
     const r = await window.ArrrGrant(apiKey, universeId, done.map(i => i.rbx.assetId));
     done.forEach(i => { if (r.granted.includes(i.rbx.assetId)) i.rbx.granted = true; });
     const failed = Object.keys(r.failed).length;
-    status(`${r.granted.length}/${done.length} audio diizinkan ke game ${universeId}`
+    status((r.placeId ? `${r.placeId} itu Place ID → pakai Universe ID ${r.universeId}. ` : '')
+      + `${r.granted.length}/${done.length} audio diizinkan ke game ${r.universeId || universeId}`
       + (failed ? ' · gagal: ' + [...new Set(Object.values(r.failed))].join(' | ') : ''));
     showToast(`${r.granted.length}/${done.length} audio diizinkan ke game`, failed ? 'warning' : 'success', 3500);
     renderRows();

@@ -16,12 +16,16 @@ class RobloxAssetService
     private const LEGACY_URL    = 'https://assetdelivery.roblox.com/v2/assetId/';
     private const INTROSPECT_URL = 'https://apis.roblox.com/api-keys/v1/introspect';
     private const PERMISSIONS_URL = 'https://apis.roblox.com/asset-permissions-api/v1/assets/permissions';
+    private const PLACE_UNIVERSE_URL = 'https://apis.roblox.com/universes/v1/places/';
 
     /** Aset per request izin (dipecah biar aman dari batas batch Roblox) */
     private const GRANT_CHUNK = 10;
 
     /** Operasi yang dibutuhkan Auto Spoof */
     private const REQUIRED_OPS = ['asset:read', 'asset:write', 'legacy-asset:manage'];
+
+    /** Scope opsional — hanya untuk fitur "Izinkan ke game" */
+    private const OPTIONAL_OPS = ['asset-permissions:write'];
 
     /** Batas ukuran file yang di-download / di-upload (byte) */
     public const MAX_BYTES = 20 * 1024 * 1024;
@@ -185,15 +189,37 @@ class RobloxAssetService
 
     /**
      * Izinkan banyak aset dipakai di satu game (universe) sekaligus.
+     * Butuh scope asset-permissions:write (lihat creator-docs asset-permissions-api/v1).
+     * Kalau game tidak ditemukan / tidak bisa diakses, ID dicoba dibaca sebagai Place ID
+     * lalu diulang dengan Universe ID-nya (izin tetap hanya berhasil untuk game milik key).
      * @param list<string> $assetIds
-     * @return array{granted:list<string>, failed:array<string,string>}
+     * @return array{granted:list<string>, failed:array<string,string>, universeId:string, placeId?:string}
      */
     public function grantUniverse(string $universeId, array $assetIds): array
     {
+        $ids    = array_values(array_unique(array_map('strval', $assetIds)));
+        $result = $this->grantBatch($universeId, $ids);
+
+        if (!$result['granted'] && $result['subjectProblem']) {
+            $fromPlace = $this->universeFromPlace($universeId);
+            if ($fromPlace !== null && $fromPlace !== $universeId) {
+                $retry = $this->grantBatch($fromPlace, $ids);
+                unset($retry['subjectProblem']);
+                return $retry + ['universeId' => $fromPlace, 'placeId' => $universeId];
+            }
+        }
+        unset($result['subjectProblem']);
+        return $result + ['universeId' => $universeId];
+    }
+
+    /** @return array{granted:list<string>, failed:array<string,string>, subjectProblem:bool} */
+    private function grantBatch(string $universeId, array $ids): array
+    {
         $granted = [];
         $failed  = [];
+        $subjectProblem = false;
 
-        foreach (array_chunk(array_values(array_unique($assetIds)), self::GRANT_CHUNK) as $chunk) {
+        foreach (array_chunk($ids, self::GRANT_CHUNK) as $chunk) {
             $body = json_encode([
                 'subjectType' => 'Universe',
                 'subjectId'   => $universeId,
@@ -207,41 +233,89 @@ class RobloxAssetService
             $json = json_decode($res['body'], true) ?: [];
 
             if ($res['status'] < 200 || $res['status'] >= 300) {
-                $reason = 'HTTP ' . $res['status'] . ': ' . self::errorMessage($json, $res['body']) . self::grantHint($res['status']);
+                // Balasan error: {"error":{"code","message"}}
+                $code = (string)($json['error']['code'] ?? '');
+                $msg  = self::errorMessage($json, $res['body']);
+                if (in_array($code, ['SubjectNotFound', 'CannotManageSubject'], true)
+                    || preg_match('/subject|universe/i', $msg)) {
+                    $subjectProblem = true;
+                }
+                $reason = self::grantCodeMessage($code) ?? ('HTTP ' . $res['status'] . ': ' . $msg . self::grantHint($res['status'], $msg));
                 foreach ($chunk as $id) {
                     $failed[$id] = $reason;
                 }
                 continue;
             }
 
-            // Balasan: {successAssetIds:[...], errors:[{assetId, code, message?}]}
+            // Balasan: {successAssetIds:[...], errors:[{assetId, code}]}
             foreach ((array)($json['errors'] ?? []) as $err) {
-                $id = (string)($err['assetId'] ?? '');
-                if ($id !== '') {
-                    $failed[$id] = (string)($err['message'] ?? $err['code'] ?? 'ditolak');
+                $id   = (string)($err['assetId'] ?? '');
+                $code = (string)($err['code'] ?? '');
+                if ($id === '') {
+                    continue;
                 }
+                if ($code === 'PublicAssetCannotBeGrantedTo') {
+                    continue; // aset publik → sudah bisa dipakai di game mana pun
+                }
+                if (in_array($code, ['SubjectNotFound', 'CannotManageSubject'], true)) {
+                    $subjectProblem = true;
+                }
+                $failed[$id] = self::grantCodeMessage($code) ?? ((string)($err['message'] ?? '') ?: $code ?: 'ditolak');
             }
-            $ok = array_map('strval', (array)($json['successAssetIds'] ?? []));
             foreach ($chunk as $id) {
-                // Tidak disebut di errors → anggap berhasil (format balasan bisa beda)
-                if (in_array($id, $ok, true) || !isset($failed[$id])) {
+                if (!isset($failed[$id])) {
                     $granted[] = $id;
-                    unset($failed[$id]);
                 }
             }
         }
-        return ['granted' => $granted, 'failed' => $failed];
+        return ['granted' => $granted, 'failed' => $failed, 'subjectProblem' => $subjectProblem];
     }
 
-    private static function grantHint(int $status): string
+    /** Pesan untuk kode error Asset Permissions API */
+    private static function grantCodeMessage(string $code): ?string
     {
+        return match ($code) {
+            'CannotManageAsset'      => 'Aset bukan milik pemilik API key (aset grup → pakai API key grup)',
+            'CannotManageSubject'    => 'Tidak punya akses ke game ini — pastikan game milik akun/grup yang sama dengan API key',
+            'SubjectNotFound'        => 'Game tidak ditemukan — isi Universe ID (bukan Place ID)',
+            'AssetNotFound'          => 'Asset ID tidak ditemukan',
+            'AssetTypeNotEnabled'    => 'Jenis aset ini tidak bisa diberi izin game',
+            'PermissionLimitReached' => 'Batas jumlah izin untuk aset ini sudah tercapai',
+            'DependenciesLimitReached' => 'Terlalu banyak dependensi aset',
+            default                  => null,
+        };
+    }
+
+    private static function grantHint(int $status, string $msg = ''): string
+    {
+        if (stripos($msg, 'scope') !== false) {
+            return ' — API key belum punya scope asset-permissions:write. Di halaman API key: Select API System → '
+                . 'asset-permissions → centang write, lalu Save Changes';
+        }
         return match ($status) {
             401     => ' — API key tidak valid / IP belum diizinkan',
-            403     => ' — butuh scope legacy-asset:manage, dan game harus milik akun/grup yang sama dengan API key',
+            403     => ' — butuh scope asset-permissions:write, dan game harus milik akun/grup yang sama dengan API key',
             404     => ' — Universe ID / aset tidak ditemukan',
+            429     => ' — kena rate limit (100/menit), coba lagi sebentar lagi',
             default => '',
         };
     }
+
+    /**
+     * Place ID → Universe ID (endpoint publik Roblox, tanpa API key). null kalau bukan Place ID.
+     */
+    public function universeFromPlace(string $placeId): ?string
+    {
+        try {
+            $res = $this->request('GET', self::PLACE_UNIVERSE_URL . rawurlencode($placeId) . '/universe', ['Accept: application/json']);
+        } catch (Throwable) {
+            return null;
+        }
+        $json = json_decode($res['body'], true) ?: [];
+        $id   = $json['universeId'] ?? null;
+        return $res['status'] === 200 && $id !== null && preg_match('/^\d{1,20}$/', (string)$id) ? (string)$id : null;
+    }
+
 
     // ============================================================
     // CEK KONEKSI API KEY
@@ -265,6 +339,7 @@ class RobloxAssetService
         $ops     = self::parseScopes($json['scopes'] ?? []);
         // Format scope tidak dikenali → jangan klaim "belum ada", tes download yang menentukan
         $missing = $introspected && $ops ? array_values(array_diff(self::REQUIRED_OPS, $ops)) : [];
+        $missingOptional = $introspected && $ops ? array_values(array_diff(self::OPTIONAL_OPS, $ops)) : [];
 
         $asset = null;
         if ($testAssetId !== null) {
@@ -290,6 +365,7 @@ class RobloxAssetService
             'scopes'  => $ops,
             'rawScopes' => ($missing || !$ops) ? ($json['scopes'] ?? null) : null, // bantu debug kalau format beda
             'missing' => $missing,
+            'missingOptional' => $missingOptional,
             'asset'   => $asset,
         ];
     }
@@ -490,7 +566,7 @@ class RobloxAssetService
     private static function errorMessage($json, string $raw): string
     {
         if (is_array($json)) {
-            $msg = $json['message'] ?? $json['errors'][0]['message'] ?? null;
+            $msg = $json['message'] ?? $json['errors'][0]['message'] ?? $json['error']['message'] ?? $json['error']['code'] ?? null;
             if ($msg) {
                 return (string)$msg;
             }

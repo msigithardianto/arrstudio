@@ -6,7 +6,7 @@
 // POST JSON  {action:"check",    apiKey, assetId?}   → cek koneksi API key (+ tes download 1 aset)
 // POST form  action=upload, apiKey, creatorType, creatorId, name?, file (multipart)
 // POST JSON  {action:"grant", apiKey, universeId, assetIds:[...]} → izinkan aset dipakai di game (maks 200)
-//            → {granted:[...], failed:{id: alasan}}
+//            → {granted:[...], failed:{id: alasan}, universeId, placeId?}  (placeId = input ternyata Place ID)
 // POST JSON  {action:"ytmp3", apiKey, creatorType, creatorId, token, name?, nameMax?}
 //            nama dipendekkan otomatis (RobloxAssetService::shortName, default 30 karakter)
 //            → upload langsung hasil YT → MP3 (file sudah di server, tanpa download/upload ulang)
@@ -109,7 +109,7 @@ class SpoofApiController extends ApiController
                         $this->error('Maks 200 aset sekali proses');
                     }
                     $granted = $service->grantUniverse($universeId, $ids);
-                    $this->record(fn() => $history->markGranted($universeId, $granted['granted']));
+                    $this->record(fn() => $history->markGranted($granted['universeId'], $granted['granted']));
                     $this->json($granted);
 
                 case 'ytmp3':
