@@ -192,27 +192,48 @@ if _f then return _f() end`;
       return showToast('Gagal deobfuscate: ' + e.message, 'error');
     }
     if (res.layers === 0) {
-      // Bukan format ARRR → best-effort: rapikan escape string kalau ada
+      // Bukan format ARRR → best-effort / penjelasan
       const be = bestEffort(src);
-      setOutput(be.code);
+      setOutput(be.cannot ? '' : be.code);
       $('loNote').textContent = be.note;
-      return showToast('Bukan format ARRR — hasil best-effort', 'warning', 4000);
+      return showToast(be.cannot ? 'Tidak bisa dibuka otomatis — lihat catatan' : 'Bukan format ARRR — hasil best-effort',
+        'warning', 5000);
     }
     setOutput(res.code);
     $('loNote').textContent = `Dikupas ${res.layers} layer → kode Lua asli.`;
     showToast(`Dikembalikan (${res.layers} layer)`);
   }
 
-  // Best-effort untuk obfuscator lain: decode string \ddd / \xHH / \z, unescape.
+  // Best-effort untuk obfuscator lain. Jujur soal batasan: obfuscator VM /
+  // enkripsi-nama (Luraph/MoonSec/IronBrew dsb.) TIDAK bisa dibuka statis —
+  // konstanta baru terbentuk saat script dijalankan, dan tool ini tidak
+  // menjalankan kode asing. Yang aman: unescape string sederhana.
   function bestEffort(text) {
-    // Ambil literal string terpanjang yang isinya escape byte (pola umum loader pihak lain)
+    // Deteksi obfuscator VM / enkripsi-nama (string-table + resolver runtime)
+    const vmSignals =
+      (/\bfunction\s+\w*\s*\([^)]*\)\s*return\s+\w+\[?\w*\s*[+\-]\s*\d{3,}/.test(text) ? 1 : 0) + // dI(c) return XI[c+NNN]
+      (/local\s+\w+\s*=\s*\{\s*["'*0]/.test(text) && (text.match(/["'][*0][^"']*["']/g) || []).length > 20 ? 1 : 0) + // tabel string besar
+      (/setmetatable\(\{\}\s*,\s*\{/.test(text) ? 1 : 0) +
+      (/\bstring\.char\b/.test(text) && /\bmath\.floor\b/.test(text) && /%\s*256/.test(text) ? 1 : 0);
+    if (vmSignals >= 2) {
+      return {
+        code: text,
+        note: 'Terdeteksi obfuscator VM / enkripsi-nama (mis. sejenis Luraph / MoonSec / IronBrew). '
+          + 'Logika programnya sebenarnya sudah berupa Lua biasa — yang disembunyikan hanya konstanta string & nama, '
+          + 'yang baru terbentuk SAAT script dijalankan (lewat PRNG di dalamnya). Untuk membukanya harus MENJALANKAN '
+          + 'script itu, dan tool ini sengaja tidak menjalankan kode asing (berbahaya). Jadi ini tidak bisa di-deobfuscate '
+          + 'otomatis jadi kode rapi. Jaminan “pasti kembali” hanya berlaku untuk hasil obfuscator ARRR ini sendiri.',
+        cannot: true,
+      };
+    }
+    // Loader sederhana: ambil literal string terpanjang berisi escape byte lalu unescape
     const candidates = [...text.matchAll(/(["'])((?:\\.|(?!\1).)*)\1/g)].map(m => m[2]);
     let best = '';
     for (const c of candidates) {
       if (/\\\d{1,3}|\\x[0-9A-Fa-f]{2}/.test(c) && c.length > best.length) best = c;
     }
     if (!best) {
-      return { code: text, note: 'Bukan format ARRR Studio. Tidak ada string ter-escape yang dikenali untuk dipulihkan otomatis.' };
+      return { code: text, note: 'Bukan format ARRR Studio, dan tidak ada string ter-escape yang bisa dipulihkan otomatis.' };
     }
     const decoded = best
       .replace(/\\x([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
