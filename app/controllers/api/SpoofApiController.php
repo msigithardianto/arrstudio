@@ -5,6 +5,8 @@
 // POST JSON  {action:"status",   apiKey, operationId}
 // POST JSON  {action:"check",    apiKey, assetId?}   → cek koneksi API key (+ tes download 1 aset)
 // POST form  action=upload, apiKey, creatorType, creatorId, name?, file (multipart)
+// POST JSON  {action:"grant", apiKey, universeId, assetIds:[...]} → izinkan aset dipakai di game (maks 200)
+//            → {granted:[...], failed:{id: alasan}}
 // POST JSON  {action:"ytmp3", apiKey, creatorType, creatorId, token, name?}
 //            → upload langsung hasil YT → MP3 (file sudah di server, tanpa download/upload ulang)
 //
@@ -60,6 +62,23 @@ class SpoofApiController extends ApiController
                     $name   = trim((string)($input['name'] ?? '')) ?: 'Asset ' . $assetId;
                     $result = $service->uploadAndWait($file['bytes'], $name, $creatorType, $creatorId);
                     $this->json($result + ['sourceId' => $file['sourceId']]);
+
+                case 'grant':
+                    $universeId = trim((string)($input['universeId'] ?? ''));
+                    if (!preg_match('/^\d{1,20}$/', $universeId)) {
+                        $this->error('Universe ID game wajib diisi (angka)');
+                    }
+                    $ids = array_values(array_unique(array_filter(
+                        array_map('strval', (array)($input['assetIds'] ?? [])),
+                        fn($id) => preg_match('/^\d{1,20}$/', $id)
+                    )));
+                    if (!$ids) {
+                        $this->error('Tidak ada asset ID yang valid');
+                    }
+                    if (count($ids) > 200) {
+                        $this->error('Maks 200 aset sekali proses');
+                    }
+                    $this->json($service->grantUniverse($universeId, $ids));
 
                 case 'ytmp3':
                     [$creatorType, $creatorId] = $this->creator($input);

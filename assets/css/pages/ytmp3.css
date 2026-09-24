@@ -59,6 +59,7 @@
 .yt-rbx a { color: var(--ds-text); text-decoration: none; }
 .yt-rbx a:hover { color: var(--gold); }
 .yt-ids { display: flex; flex-direction: column; gap: 8px; }
+.yt-grant-auto { justify-content: flex-end; padding-bottom: 10px; }
 
 /* ---------- Audio Enhancement ---------- */
 .yt-enhance { margin-bottom: 24px; }

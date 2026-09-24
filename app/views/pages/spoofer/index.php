@@ -50,6 +50,12 @@ $isLoggedIn = Auth::check();
           <input type="text" id="spCreatorId" class="sp-input" placeholder="User ID / Group ID" inputmode="numeric">
         </div>
 
+        <label class="sp-label" for="spUniverseId">Izinkan di game (opsional)</label>
+        <input type="text" id="spUniverseId" class="sp-input" placeholder="Universe ID game" inputmode="numeric">
+        <label class="sp-check">
+          <input type="checkbox" id="spAutoGrant"> Otomatis izinkan semua aset baru ke game ini
+        </label>
+
         <details class="sp-help">
           <summary>Cara bikin API key</summary>
           <ol>
@@ -127,6 +133,25 @@ $isLoggedIn = Auth::check();
         <button type="button" class="sp-btn-ghost" id="spDownload">Download .txt</button>
       </div>
       <textarea id="spOutput" class="sp-input sp-textarea sp-output" readonly spellcheck="false"></textarea>
+    </section>
+
+    <!-- ===== 4. IZIN GAME MASSAL ===== -->
+    <section class="sp-card sp-grant">
+      <div class="sp-results-head">
+        <h2 class="sp-card-title"><span>04</span> Izinkan aset ke game</h2>
+        <p class="sp-progress-text" id="spGrantStatus"></p>
+      </div>
+      <p class="sp-grant-desc">
+        Kasih izin banyak aset sekaligus supaya bisa dipakai di game kamu (tidak perlu buka Permissions satu-satu).
+        Isi <b>Universe ID</b> di card 01. Aset &amp; game harus milik akun / grup yang sama dengan API key.
+      </p>
+      <textarea id="spGrantIds" class="sp-input sp-textarea sp-grant-ids" spellcheck="false"
+        placeholder="Asset ID (satu per baris / pisah koma) — atau klik &quot;Pakai hasil di atas&quot;"></textarea>
+      <div class="sp-output-head">
+        <button type="button" class="sp-start sp-grant-btn" id="spGrant" <?= $isLoggedIn ? "" : "disabled" ?>>Izinkan semua ke game</button>
+        <button type="button" class="sp-btn-ghost" id="spGrantFill">Pakai hasil di atas</button>
+      </div>
+      <div class="sp-check-result" id="spGrantResult" hidden></div>
     </section>
 
   </div>

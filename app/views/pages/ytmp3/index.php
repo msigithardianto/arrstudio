@@ -179,6 +179,15 @@ $maxMinutes = intdiv((int)config('app.ytmp3.max_duration', 1800), 60);
           </div>
           <p class="sp-hint">Nama aset = judul video. Upload audio kena kuota bulanan &amp; review moderasi Roblox.</p>
         </div>
+        <div>
+          <label class="sp-label" for="ytUniverseId">Izinkan di game (opsional)</label>
+          <input type="text" id="ytUniverseId" class="sp-input" placeholder="Universe ID game" inputmode="numeric">
+        </div>
+        <div class="yt-grant-auto">
+          <label class="sp-check">
+            <input type="checkbox" id="ytAutoGrant"> Otomatis izinkan semua audio baru ke game ini
+          </label>
+        </div>
       </div>
     </section>
 
@@ -213,7 +222,9 @@ $maxMinutes = intdiv((int)config('app.ytmp3.max_duration', 1800), 60);
             <option value="lua">Tabel Lua { ["judul"] = "rbxassetid://ID" }</option>
           </select>
           <button type="button" class="sp-btn-ghost" id="ytIdCopy">Copy</button>
+          <button type="button" class="sp-btn-ghost" id="ytGrant">Izinkan semua ke game</button>
         </div>
+        <p class="sp-hint" id="ytGrantStatus"></p>
         <textarea id="ytIds" class="sp-input sp-textarea sp-output" readonly spellcheck="false"></textarea>
       </div>
     </section>

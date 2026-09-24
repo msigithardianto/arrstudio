@@ -15,6 +15,10 @@ class RobloxAssetService
     private const DELIVERY_URL  = 'https://apis.roblox.com/asset-delivery-api/v1/assetId/';
     private const LEGACY_URL    = 'https://assetdelivery.roblox.com/v2/assetId/';
     private const INTROSPECT_URL = 'https://apis.roblox.com/api-keys/v1/introspect';
+    private const PERMISSIONS_URL = 'https://apis.roblox.com/asset-permissions-api/v1/assets/permissions';
+
+    /** Aset per request izin (dipecah biar aman dari batas batch Roblox) */
+    private const GRANT_CHUNK = 10;
 
     /** Operasi yang dibutuhkan Auto Spoof */
     private const REQUIRED_OPS = ['asset:read', 'asset:write', 'legacy-asset:manage'];
@@ -173,6 +177,70 @@ class RobloxAssetService
         };
         $text = 'HTTP ' . $status . ($msg !== '' ? ' — ' . $msg : ($raw !== '' && $status !== 200 ? ' — ' . substr(strip_tags($raw), 0, 120) : ''));
         return $text . ($hint !== '' ? '. ' . $hint : '');
+    }
+
+    // ============================================================
+    // IZIN PAKAI DI GAME (Asset Permissions API — scope legacy-asset:manage)
+    // ============================================================
+
+    /**
+     * Izinkan banyak aset dipakai di satu game (universe) sekaligus.
+     * @param list<string> $assetIds
+     * @return array{granted:list<string>, failed:array<string,string>}
+     */
+    public function grantUniverse(string $universeId, array $assetIds): array
+    {
+        $granted = [];
+        $failed  = [];
+
+        foreach (array_chunk(array_values(array_unique($assetIds)), self::GRANT_CHUNK) as $chunk) {
+            $body = json_encode([
+                'subjectType' => 'Universe',
+                'subjectId'   => $universeId,
+                'action'      => 'Use',
+                'requests'    => array_map(fn($id) => ['assetId' => (int)$id, 'grantToDependencies' => true], $chunk),
+            ]);
+            $res  = $this->request('PATCH', self::PERMISSIONS_URL, [
+                'x-api-key: ' . $this->apiKey,
+                'Content-Type: application/json',
+            ], $body);
+            $json = json_decode($res['body'], true) ?: [];
+
+            if ($res['status'] < 200 || $res['status'] >= 300) {
+                $reason = 'HTTP ' . $res['status'] . ': ' . self::errorMessage($json, $res['body']) . self::grantHint($res['status']);
+                foreach ($chunk as $id) {
+                    $failed[$id] = $reason;
+                }
+                continue;
+            }
+
+            // Balasan: {successAssetIds:[...], errors:[{assetId, code, message?}]}
+            foreach ((array)($json['errors'] ?? []) as $err) {
+                $id = (string)($err['assetId'] ?? '');
+                if ($id !== '') {
+                    $failed[$id] = (string)($err['message'] ?? $err['code'] ?? 'ditolak');
+                }
+            }
+            $ok = array_map('strval', (array)($json['successAssetIds'] ?? []));
+            foreach ($chunk as $id) {
+                // Tidak disebut di errors → anggap berhasil (format balasan bisa beda)
+                if (in_array($id, $ok, true) || !isset($failed[$id])) {
+                    $granted[] = $id;
+                    unset($failed[$id]);
+                }
+            }
+        }
+        return ['granted' => $granted, 'failed' => $failed];
+    }
+
+    private static function grantHint(int $status): string
+    {
+        return match ($status) {
+            401     => ' — API key tidak valid / IP belum diizinkan',
+            403     => ' — butuh scope legacy-asset:manage, dan game harus milik akun/grup yang sama dengan API key',
+            404     => ' — Universe ID / aset tidak ditemukan',
+            default => '',
+        };
     }
 
     // ============================================================
@@ -386,7 +454,7 @@ class RobloxAssetService
     }
 
     /** @return array{status:int, body:string} */
-    private function request(string $method, string $url, array $headers = [], ?string $body = null, bool $binary = false): array
+    protected function request(string $method, string $url, array $headers = [], ?string $body = null, bool $binary = false): array
     {
         $ch = curl_init($url);
         $opts = [
@@ -401,6 +469,9 @@ class RobloxAssetService
         if ($method === 'POST') {
             $opts[CURLOPT_POST]       = true;
             $opts[CURLOPT_POSTFIELDS] = $body ?? '';
+        } elseif ($method !== 'GET') {
+            $opts[CURLOPT_CUSTOMREQUEST] = $method;
+            $opts[CURLOPT_POSTFIELDS]    = $body ?? '';
         }
         if ($binary) {
             // Stop kalau file lebih besar dari batas
