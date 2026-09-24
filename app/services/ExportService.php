@@ -16,21 +16,79 @@ class ExportService
 
     public function build(array $nodes, int $width, int $height, ?array $billboard = null): array
     {
-        $logic = GameLogicGenerator::generate($nodes);
+        // 1. Baca logic GUI dulu (tombol, card, toggle, saldo)
+        $spec = (new GuiAnalyzer())->analyze($nodes);
+
+        // 2. Elemen yang diklik (card item, label aksi, toggle) → TextButton di Studio
+        $nodes = $this->promoteClickables($nodes, $spec);
+
+        // 3. Bingkai UI: root dirapatkan ke (0,0), ScreenGui & container diberi nama sesuai UI
+        [$nodes, $width, $height, $ui] = $this->frameUi($nodes, $width, $height);
+
+        $logic = GameLogicGenerator::generate($nodes, $spec, $ui);
 
         return [
+            'script'       => LuaGenerator::generateBehaviorScript($nodes, $ui),
+            'fullscript'   => FullScriptGenerator::generateFullScript($nodes, $width, $height, $ui),
+            'tree'         => LuaGenerator::renderTreeText($nodes),
+            'rbxmx'        => RbxmxGenerator::generate($nodes, $width, $height, $ui),
+            'plugin'       => PluginGenerator::generate(),
+            'billboard'    => BillboardGenerator::generate($billboard ?? self::DEFAULT_BILLBOARD),
+            'report'       => LuaGenerator::renderReport($nodes),
             'module'       => $logic['module'],
             'server'       => $logic['server'],
             'client'       => $logic['client'],
-            'logicSummary' => $this->logicSummary($logic['spec']),
-            'script'     => LuaGenerator::generateBehaviorScript($nodes),
-            'fullscript' => $this->withAutoScale(FullScriptGenerator::generateFullScript($nodes, $width, $height)),
-            'tree'       => LuaGenerator::renderTreeText($nodes),
-            'rbxmx'      => RbxmxGenerator::generate($nodes, $width, $height),
-            'plugin'     => PluginGenerator::generate(),
-            'billboard'  => BillboardGenerator::generate($billboard ?? self::DEFAULT_BILLBOARD),
-            'report'     => LuaGenerator::renderReport($nodes),
+            'logicSummary' => $this->logicSummary($spec),
+            'ui'           => $ui,
         ];
+    }
+
+    private function promoteClickables(array $nodes, array $spec): array
+    {
+        $targets = [];
+        foreach ($spec['bindings'] as $b) $targets[$b['target']] = true;
+
+        foreach ($nodes as &$n) {
+            if (!isset($targets[$n['name']]) || in_array($n['robloxClass'], ['TextButton', 'ImageButton', 'TextBox'], true)) continue;
+            // Frame (card/toggle) → TextButton kosong; TextLabel ("Save Changes") → TextButton berteks
+            if ($n['robloxClass'] === 'Frame') $n['text'] = '';
+            $n['robloxClass']  = 'TextButton';
+            $n['isButtonLike'] = true;
+        }
+        unset($n);
+        return $nodes;
+    }
+
+    /**
+     * Rapatkan root ke konten & tentukan nama:
+     *  - 1 root  → root itu sendiri jadi container (tanpa Frame "Canvas" kosong)
+     *  - >1 root → container transparan "Main" seukuran konten
+     */
+    private function frameUi(array $nodes, int $width, int $height): array
+    {
+        $roots = array_keys(array_filter($nodes, fn($n) => ($n['parentId'] ?? null) === null));
+        if (!$roots) {
+            return [$nodes, $width, $height, ['name' => 'Main', 'gui' => 'MainGui', 'singleRoot' => false]];
+        }
+
+        $minX = min(array_map(fn($i) => $nodes[$i]['x'], $roots));
+        $minY = min(array_map(fn($i) => $nodes[$i]['y'], $roots));
+        $maxX = max(array_map(fn($i) => $nodes[$i]['x'] + $nodes[$i]['w'], $roots));
+        $maxY = max(array_map(fn($i) => $nodes[$i]['y'] + $nodes[$i]['h'], $roots));
+        foreach ($roots as $i) {
+            $nodes[$i]['x'] -= $minX;
+            $nodes[$i]['y'] -= $minY;
+        }
+
+        $single = count($roots) === 1;
+        $name   = $single ? $nodes[$roots[0]]['name'] : 'Main';
+        $base   = preg_replace('/(Frame|Container|Panel)$/', '', $name) ?: 'Main';
+
+        return [$nodes, max(1, $maxX - $minX), max(1, $maxY - $minY), [
+            'name'       => $name,
+            'gui'        => $base . 'Gui',
+            'singleRoot' => $single,
+        ]];
     }
 
     /**
@@ -44,48 +102,5 @@ class ExportService
         if ($spec['settings'])   $parts[] = count($spec['settings']) . ' setting';
         if ($spec['actions'])    $parts[] = implode(', ', $spec['actions']);
         return $parts ? implode(' · ', $parts) : 'Tidak ada aksi server terdeteksi — template dasar';
-    }
-
-    /**
-     * Sisipkan UIScale supaya canvas menyesuaikan ukuran layar
-     * (tepat setelah baris `canvas.Parent = ...`)
-     */
-    private function withAutoScale(string $script): string
-    {
-        $patch = <<<'LUA'
-
--- ============================================================
---  AUTO-SCALE
--- ============================================================
-do
-	local Camera = workspace.CurrentCamera
-	local uiScale = Instance.new("UIScale")
-	uiScale.Name = "AutoScale"
-	uiScale.Parent = canvas
-
-	local function updateScale()
-		if not Camera then return end
-		local vp = Camera.ViewportSize
-		local scaleX = (vp.X * 0.9) / 800
-		local scaleY = (vp.Y * 0.9) / 600
-		local s = math.min(scaleX, scaleY, 1)
-		uiScale.Scale = s
-		canvas.Position = UDim2.new(0.5, 0, 0.5, 0)
-		canvas.AnchorPoint = Vector2.new(0.5, 0.5)
-	end
-
-	updateScale()
-	if Camera then
-		Camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)
-	end
-end
-LUA;
-
-        return preg_replace(
-            '/(canvas\.Parent\s*=\s*(screenGui|playerGui))/',
-            '$1' . "\n" . $patch,
-            $script,
-            1
-        );
     }
 }

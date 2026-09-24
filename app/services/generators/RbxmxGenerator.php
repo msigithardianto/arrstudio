@@ -6,13 +6,18 @@ class RbxmxGenerator {
     private const TEXT_X = ['Left' => 0, 'Right' => 1, 'Center' => 2];
     private const TEXT_Y = ['Top' => 0, 'Center' => 1, 'Bottom' => 2];
 
-    public static function generate($nodes, $W = 800, $H = 600) {
+    /**
+     * $ui: ['name' => nama container, 'gui' => nama ScreenGui, 'singleRoot' => bool]
+     * singleRoot = root UI sendiri jadi container (tanpa Frame "Canvas" tambahan)
+     */
+    public static function generate($nodes, $W = 800, $H = 600, array $ui = []) {
+        $ui += ['name' => 'Canvas', 'gui' => 'GeneratedUI', 'singleRoot' => false];
         $refCounter = 0;
         $newRef = function() use (&$refCounter) {
             return 'RBX' . strtoupper(base_convert(++$refCounter, 10, 36));
         };
 
-        $behavior = LuaGenerator::generateBehaviorScript($nodes);
+        $behavior = LuaGenerator::generateBehaviorScript($nodes, $ui);
 
         $out = [];
         $out[] = '<?xml version="1.0" encoding="utf-8"?>';
@@ -25,7 +30,7 @@ class RbxmxGenerator {
 
         $out[] = '    <Item class="ScreenGui" referent="' . $newRef() . '">';
         $out[] = '      <Properties>';
-        $out[] = '        <string name="Name">GeneratedUI</string>';
+        $out[] = '        <string name="Name">' . self::x($ui['gui']) . '</string>';
         $out[] = '        <bool name="ResetOnSpawn">false</bool>';
         $out[] = '        <bool name="IgnoreGuiInset">true</bool>';
         $out[] = '        <token name="ZIndexBehavior">0</token>';
@@ -40,23 +45,26 @@ class RbxmxGenerator {
         $out[] = '        </Properties>';
         $out[] = '      </Item>';
 
-        $out[] = '      <Item class="Frame" referent="' . $newRef() . '">';
-        $out[] = '        <Properties>';
-        $out[] = '          <string name="Name">Canvas</string>';
-        $out[] = '          <float name="BackgroundTransparency">1</float>';
-        $out[] = "          <UDim2 name=\"Size\"><XS>0</XS><XO>{$W}</XO><YS>0</YS><YO>{$H}</YO></UDim2>";
-        $out[] = "          <UDim2 name=\"Position\"><XS>0.5</XS><XO>-" . ($W/2) . "</XO><YS>0.5</YS><YO>-" . ($H/2) . "</YO></UDim2>";
-        $out[] = '          <int name="BorderSizePixel">0</int>';
-        $out[] = '          <bool name="Active">false</bool>';
-        $out[] = '          <bool name="ClipsDescendants">false</bool>';
-        $out[] = '        </Properties>';
+        // Container utama hanya dibuat kalau root UI lebih dari satu
+        if (!$ui['singleRoot']) {
+            $out[] = '      <Item class="Frame" referent="' . $newRef() . '">';
+            $out[] = '        <Properties>';
+            $out[] = '          <string name="Name">' . self::x($ui['name']) . '</string>';
+            $out[] = '          <float name="BackgroundTransparency">1</float>';
+            $out[] = "          <UDim2 name=\"Size\"><XS>0</XS><XO>{$W}</XO><YS>0</YS><YO>{$H}</YO></UDim2>";
+            $out[] = "          <UDim2 name=\"Position\"><XS>0.5</XS><XO>-" . ($W/2) . "</XO><YS>0.5</YS><YO>-" . ($H/2) . "</YO></UDim2>";
+            $out[] = '          <int name="BorderSizePixel">0</int>';
+            $out[] = '          <bool name="Active">false</bool>';
+            $out[] = '          <bool name="ClipsDescendants">false</bool>';
+            $out[] = '        </Properties>';
 
-        $out[] = '        <Item class="UIScale" referent="' . $newRef() . '">';
-        $out[] = '          <Properties>';
-        $out[] = '            <string name="Name">UIScale</string>';
-        $out[] = '            <float name="Scale">1</float>';
-        $out[] = '          </Properties>';
-        $out[] = '        </Item>';
+            $out[] = '        <Item class="UIScale" referent="' . $newRef() . '">';
+            $out[] = '          <Properties>';
+            $out[] = '            <string name="Name">UIScale</string>';
+            $out[] = '            <float name="Scale">1</float>';
+            $out[] = '          </Properties>';
+            $out[] = '        </Item>';
+        }
 
         $byParent = [];
         foreach ($nodes as $n) {
@@ -64,7 +72,7 @@ class RbxmxGenerator {
             $byParent[$key][] = $n;
         }
 
-        $writeNode = function($n, $indent) use (&$writeNode, &$byParent, &$out, &$newRef) {
+        $writeNode = function($n, $indent, bool $isContainer = false) use (&$writeNode, &$byParent, &$out, &$newRef) {
             $pad = str_repeat('  ', $indent);
             $st  = NodeStyle::resolve($n);
             $p   = fn(string $line) => $out[] = "{$pad}    {$line}";
@@ -72,7 +80,13 @@ class RbxmxGenerator {
             $out[] = "{$pad}<Item class=\"{$n['robloxClass']}\" referent=\"" . $newRef() . '">';
             $out[] = "{$pad}  <Properties>";
             $p('<string name="Name">' . self::x($n['name']) . '</string>');
-            $p("<UDim2 name=\"Position\"><XS>0</XS><XO>{$n['x']}</XO><YS>0</YS><YO>{$n['y']}</YO></UDim2>");
+            if ($isContainer) {
+                // Root = container: di tengah layar
+                $p('<Vector2 name="AnchorPoint"><X>0.5</X><Y>0.5</Y></Vector2>');
+                $p('<UDim2 name="Position"><XS>0.5</XS><XO>0</XO><YS>0.5</YS><YO>0</YO></UDim2>');
+            } else {
+                $p("<UDim2 name=\"Position\"><XS>0</XS><XO>{$n['x']}</XO><YS>0</YS><YO>{$n['y']}</YO></UDim2>");
+            }
             $p("<UDim2 name=\"Size\"><XS>0</XS><XO>{$n['w']}</XO><YS>0</YS><YO>{$n['h']}</YO></UDim2>");
             $p(self::color3('BackgroundColor3', $st['bgColor']));
             $p('<float name="BackgroundTransparency">' . $st['bgTransparency'] . '</float>');
@@ -113,6 +127,10 @@ class RbxmxGenerator {
                 $out[] = "{$pad}    </Properties>";
                 $out[] = "{$pad}  </Item>";
             };
+
+            if ($isContainer) {
+                $modifier('UIScale', ['<float name="Scale">1</float>']);
+            }
 
             if ($st['cornerRadius'] > 0) {
                 $modifier('UICorner', ["<UDim name=\"CornerRadius\"><S>0</S><O>{$st['cornerRadius']}</O></UDim>"]);
@@ -157,9 +175,13 @@ class RbxmxGenerator {
         };
 
         $rootChildren = $byParent['root'] ?? [];
-        foreach ($rootChildren as $c) $writeNode($c, 6);
+        if ($ui['singleRoot']) {
+            foreach ($rootChildren as $c) $writeNode($c, 3, true);
+        } else {
+            foreach ($rootChildren as $c) $writeNode($c, 6);
+            $out[] = '      </Item>';
+        }
 
-        $out[] = '      </Item>';
         $out[] = '    </Item>';
         $out[] = '  </Item>';
         $out[] = '</roblox>';

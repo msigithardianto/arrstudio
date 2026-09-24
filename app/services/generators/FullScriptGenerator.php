@@ -1,7 +1,12 @@
 <?php
 // app/services/generators/FullScriptGenerator.php — full LocalScript (build UI + behavior)
 class FullScriptGenerator {
-    public static function generateFullScript($nodes, $W, $H) {
+    /**
+     * $ui: ['name' => nama container, 'gui' => nama ScreenGui, 'singleRoot' => bool]
+     */
+    public static function generateFullScript($nodes, $W, $H, array $ui = []) {
+        $ui += ['name' => 'Canvas', 'gui' => 'GeneratedUI', 'singleRoot' => false];
+        $gui = LuaHelper::q($ui['gui']);
         $L = [];
         $L[] = '-- ============================================================';
         $L[] = '--  FULL SCRIPT — bikin UI dari nol di runtime';
@@ -22,51 +27,31 @@ class FullScriptGenerator {
         $L[] = '';
         $L[] = 'local playerGui = player:WaitForChild("PlayerGui")';
         $L[] = '';
-        $L[] = 'local old = playerGui:FindFirstChild("GeneratedUI")';
+        $L[] = "local old = playerGui:FindFirstChild({$gui})";
         $L[] = 'if old then old:Destroy() end';
         $L[] = '';
         $L[] = 'local screenGui = Instance.new("ScreenGui")';
-        $L[] = 'screenGui.Name = "GeneratedUI"';
+        $L[] = "screenGui.Name = {$gui}";
         $L[] = 'screenGui.ResetOnSpawn = false';
         $L[] = 'screenGui.IgnoreGuiInset = true';
         $L[] = 'screenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling';
         $L[] = 'screenGui.Parent = playerGui';
         $L[] = '';
-        $L[] = 'local canvas = Instance.new("Frame")';
-        $L[] = 'canvas.Name = "Canvas"';
-        $L[] = 'canvas.BackgroundTransparency = 1';
-        $L[] = "canvas.Size = UDim2.new(0, {$W}, 0, {$H})";
-        $L[] = 'canvas.Position = UDim2.new(0.5, 0, 0.5, 0)';
-        $L[] = 'canvas.AnchorPoint = Vector2.new(0.5, 0.5)';
-        $L[] = 'canvas.ClipsDescendants = false';
-        $L[] = 'canvas.Active = false';
-        $L[] = 'canvas.Parent = screenGui';
-        $L[] = '';
-        $L[] = '-- ============================================================';
-        $L[] = '--  AUTO-SCALE: bikin canvas pas di layar apapun';
-        $L[] = '--  Skala max = 1 (nggak pernah kegedean dari 800x600)';
-        $L[] = '-- ============================================================';
-        $L[] = 'local uiScale = Instance.new("UIScale")';
-        $L[] = 'uiScale.Name = "AutoScale"';
-        $L[] = 'uiScale.Parent = canvas';
-        $L[] = '';
-        $L[] = 'local function updateScale()';
-        $L[] = '    local camera = workspace.CurrentCamera';
-        $L[] = '    if not camera then return end';
-        $L[] = '    local vp = camera.ViewportSize';
-        $L[] = '    -- Margin 10% biar nggak nempel pinggir';
-        $L[] = "    local scaleX = (vp.X * 0.9) / {$W}";
-        $L[] = "    local scaleY = (vp.Y * 0.9) / {$H}";
-        $L[] = '    local s = math.min(scaleX, scaleY, 1)  -- max 1, nggak kegedean';
-        $L[] = '    uiScale.Scale = s';
-        $L[] = 'end';
-        $L[] = '';
-        $L[] = 'updateScale()';
-        $L[] = '';
-        $L[] = 'local camera = workspace.CurrentCamera';
-        $L[] = 'if camera then';
-        $L[] = '    camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)';
-        $L[] = 'end';
+        if ($ui['singleRoot']) {
+            $L[] = '-- Root UI sendiri yang jadi container (di-center + di-scale)';
+            $L[] = 'local canvas';
+        } else {
+            $L[] = 'local canvas = Instance.new("Frame")';
+            $L[] = 'canvas.Name = ' . LuaHelper::q($ui['name']);
+            $L[] = 'canvas.BackgroundTransparency = 1';
+            $L[] = "canvas.Size = UDim2.new(0, {$W}, 0, {$H})";
+            $L[] = 'canvas.Position = UDim2.new(0.5, 0, 0.5, 0)';
+            $L[] = 'canvas.AnchorPoint = Vector2.new(0.5, 0.5)';
+            $L[] = 'canvas.ClipsDescendants = false';
+            $L[] = 'canvas.Active = false';
+            $L[] = 'canvas.Parent = screenGui';
+            $L[] = '';
+        }
         $L[] = '';
         $L[] = 'local function findByNormName(root, targetName)';
         $L[] = '    local targetNorm = targetName:lower():gsub("[^%a%d]", "")';
@@ -184,9 +169,18 @@ class FullScriptGenerator {
                 $L[] = 'end';
             }
 
-            $L[] = "{$v}.Parent = " . ($n['parentId'] ? $vmap[$n['parentId']] : 'canvas');
+            if (!$n['parentId'] && $ui['singleRoot']) {
+                $L[] = "{$v}.AnchorPoint = Vector2.new(0.5, 0.5)";
+                $L[] = "{$v}.Position = UDim2.new(0.5, 0, 0.5, 0)";
+                $L[] = "{$v}.Parent = screenGui";
+                $L[] = "canvas = {$v}";
+            } else {
+                $L[] = "{$v}.Parent = " . ($n['parentId'] ? $vmap[$n['parentId']] : 'canvas');
+            }
             $L[] = '';
         }
+
+        foreach (self::autoScaleLines($W, $H) as $line) $L[] = $line;
 
         $L[] = '-- BEHAVIOR';
         $L[] = self::generateInlineBehavior($sorted, $vmap, $W, $H);
@@ -442,4 +436,34 @@ class FullScriptGenerator {
         return implode("\n", $L);
     }
 
+    private static function autoScaleLines($W, $H): array {
+        $L = [];
+        $L[] = '-- ============================================================';
+        $L[] = '--  AUTO-SCALE: bikin canvas pas di layar apapun';
+        $L[] = '--  Skala max = 1 (nggak pernah kegedean dari ukuran desain)';
+        $L[] = '-- ============================================================';
+        $L[] = 'local uiScale = Instance.new("UIScale")';
+        $L[] = 'uiScale.Name = "AutoScale"';
+        $L[] = 'uiScale.Parent = canvas';
+        $L[] = '';
+        $L[] = 'local function updateScale()';
+        $L[] = '    local camera = workspace.CurrentCamera';
+        $L[] = '    if not camera then return end';
+        $L[] = '    local vp = camera.ViewportSize';
+        $L[] = '    -- Margin 10% biar nggak nempel pinggir';
+        $L[] = "    local scaleX = (vp.X * 0.9) / {$W}";
+        $L[] = "    local scaleY = (vp.Y * 0.9) / {$H}";
+        $L[] = '    local s = math.min(scaleX, scaleY, 1)  -- max 1, nggak kegedean';
+        $L[] = '    uiScale.Scale = s';
+        $L[] = 'end';
+        $L[] = '';
+        $L[] = 'updateScale()';
+        $L[] = '';
+        $L[] = 'local camera = workspace.CurrentCamera';
+        $L[] = 'if camera then';
+        $L[] = '    camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)';
+        $L[] = 'end';
+        $L[] = '';
+        return $L;
+    }
 }

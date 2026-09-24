@@ -141,9 +141,19 @@ window.addEventListener('resize', () => {
 /* ============================================================
    CONVERT FLOW
    ============================================================ */
-/* Guest: generate Lua hanya lewat tombol Convert (hemat kuota).
-   Login: auto-convert tiap ketik. */
-const isManualMode = () => !window.__isLoggedIn;
+/* Default: generate Lua hanya lewat tombol Convert (preview HTML tetap live).
+   User login bisa nyalakan "Auto" (disimpan di localStorage). */
+const AUTO_KEY = 'arrr_auto_convert';
+function isAutoConvert() {
+  if (!window.__isLoggedIn) return false;
+  try { return localStorage.getItem(AUTO_KEY) === '1'; } catch { return false; }
+}
+const isManualMode = () => !isAutoConvert();
+
+function setAutoConvert(on) {
+  try { localStorage.setItem(AUTO_KEY, on ? '1' : '0'); } catch {}
+  if (on) scheduleConvert(50);
+}
 
 // Dipanggil saat isi editor berubah
 function scheduleConvert(delay = 350) {
@@ -183,6 +193,12 @@ function markOutputStale() {
 
 // Label tombol Convert: tampilkan sisa kuota untuk guest
 function updateConvertButton() {
+  const auto = $('autoConvert');
+  if (auto) {
+    auto.hidden = !window.__isLoggedIn;
+    const box = auto.querySelector('input');
+    if (box) box.checked = isAutoConvert();
+  }
   const quota = $('convertQuota');
   if (!quota) return;
   if (window.__isLoggedIn || !window.GuestLimit) {
@@ -1414,6 +1430,7 @@ window.fitToScreen   = fitToScreen;
 window.loadSample    = loadSample;
 window.clearInput    = clearInput;
 window.runConvert    = runConvert;
+window.setAutoConvert = setAutoConvert;
 window.switchTab     = switchTab;
 window.currentLogicFile = currentLogicFile;
 window.copyCurrent   = copyCurrent;

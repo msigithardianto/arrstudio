@@ -19,6 +19,8 @@ class GuiAnalyzer
         'AcceptQuest' => '/\b(accept|terima|mulai quest|start quest)\b/u',
         'DeclineQuest'=> '/\b(decline|tolak|reject)\b/u',
         'SaveSettings'=> '/\b(save|simpan|apply|terapkan)\b/u',
+        'Revive'      => '/\b(revive|bangkit)\b/u',
+        'Respawn'     => '/\b(respawn|hidup lagi)\b/u',
     ];
 
     /** Kata → nama mata uang (dicek duluan, lebih spesifik dari ikon) */
@@ -85,6 +87,23 @@ class GuiAnalyzer
 
             $binding = ['target' => $n['name'], 'action' => $action, 'kind' => 'button', 'label' => $n['text'] ?? ''];
             $card = $cardOf[$n['id']] ?? null;
+
+            // Harga di teks tombol ("Buy Premium · 💎 950", "Upgrade · 🪙 900")
+            $inlinePrice = $this->priceInText($n['text'] ?? '') ?? $this->siblingPrice($n);
+            if ($inlinePrice !== null) {
+                $binding['price'] = $inlinePrice;
+                if ($action === 'Purchase' && $card === null) {
+                    $label = trim(preg_replace('/\b(buy|beli|purchase)\b|[·|•].*$/iu', '', $n['text']));
+                    $itemId = LuaHelper::ident($label ?: 'Item');
+                    $items[$itemId] = [
+                        'DisplayName' => $label ?: $itemId,
+                        'Price'       => $inlinePrice['amount'],
+                        'Currency'    => $inlinePrice['currency'] ?? $defaultCur,
+                        'Rarity'      => null,
+                    ];
+                    $binding['itemId'] = $itemId;
+                }
+            }
             if ($card !== null && in_array($action, ['Purchase', 'Sell', 'Equip', 'Unequip', 'Upgrade', 'UseItem', 'Craft'], true)) {
                 $binding['itemId'] = $card['itemId'];
                 $cardsWithButton[$card['itemId']] = true;
@@ -150,6 +169,9 @@ class GuiAnalyzer
         $currencies = [];
         foreach ($balances as $b) $currencies[$b['currency']] ??= $b['amount'];
         foreach ($items as $it) $currencies[$it['Currency']] ??= 0;
+        foreach ($bindings as $b) {
+            if (!empty($b['price']['currency'])) $currencies[$b['price']['currency']] ??= 0;
+        }
         if (!$currencies && array_intersect($actions, ['Claim', 'Spin', 'Upgrade', 'Redeem', 'Craft'])) {
             $currencies['Coins'] = 0;
         }
@@ -180,13 +202,21 @@ class GuiAnalyzer
             $prices = array_values(array_filter($desc, fn($d) => $this->parsePrice($d['text'] ?? '') !== null));
             if (count($prices) !== 1) continue;
 
+            // Panel berisi tombol aksi non-item (Spin, Claim, Redeem, ...) bukan card item
+            foreach ($desc as $d) {
+                $act = $this->isClickable($d) ? $this->classify($d) : null;
+                if ($act !== null && !in_array($act, ['Purchase', 'Sell', 'Equip', 'Unequip', 'Upgrade', 'UseItem', 'Craft'], true)) {
+                    continue 2;
+                }
+            }
+
             $name = null;
             $rarity = null;
             foreach ($desc as $d) {
                 $t = trim($d['text'] ?? '');
                 if ($t === '' || $d['id'] === $prices[0]['id']) continue;
                 if (in_array(strtolower($t), self::RARITIES, true)) { $rarity ??= ucfirst(strtolower($t)); continue; }
-                if ($this->isIconOnly($t) || $this->classifyText($t) !== null || preg_match('/^\d/', $t)) continue;
+                if ($this->isIconOnly($t) || $this->classifyText($t) !== null || preg_match('/^\d|%/', $t)) continue;
                 if (mb_strlen($t) > 40) continue;
                 $name ??= $t;
             }
@@ -245,6 +275,13 @@ class GuiAnalyzer
         foreach ($this->nodes as $n) {
             if (isset($cardOf[$n['id']]) || !in_array($n['robloxClass'], ['TextLabel', 'TextButton'], true)) continue;
             $text = $n['text'] ?? '';
+            // Teks hadiah / harga / perubahan (+340) bukan saldo
+            if (preg_match('/\b(hadiah|reward|harga|price|cost|biaya|dapat|revive|upgrade)\b|^\s*[+\-]/iu', $text)) continue;
+            // Label di samping tombol aksi berbayar (mis. biaya spin) = harga, bukan saldo
+            $siblings = array_map(fn($id) => $this->byId[$id], $this->children[$n['parentId'] ?? 0] ?? []);
+            foreach ($siblings as $sib) {
+                if ($sib['id'] !== $n['id'] && $this->isClickable($sib) && $this->classify($sib) !== null) continue 2;
+            }
             $price = $this->parsePrice(preg_replace('/\s*[·|•].*$/u', '', $text), 32);
             if ($price === null || $price['currency'] === null) continue;
 
@@ -263,8 +300,10 @@ class GuiAnalyzer
     private function classify(array $n): ?string
     {
         $action = strtolower($n['action'] ?? '');
-        // Aksi navigasi UI biasa → urusan behavior script, bukan server
-        if (in_array($action, ['toggle', 'close', 'tab', 'switch', 'play'], true)) return null;
+        // Tutup / pindah tab / play musik → murni UI (behavior script), bukan server.
+        // 'toggle' tetap dicek: id seperti "claim-btn" ikut terbaca toggle oleh parser.
+        if (in_array($action, ['close', 'tab', 'switch', 'play'], true)) return null;
+        if ($action === 'toggle') $action = '';
 
         $text = $n['text'] ?? '';
         if ($text === '') {
@@ -286,6 +325,27 @@ class GuiAnalyzer
             if (preg_match($re, $hay)) return $action;
         }
         return null;
+    }
+
+    /** Label harga tepat di samping tombol (mis. "💎 250 Gems" + tombol SPIN) */
+    private function siblingPrice(array $n): ?array
+    {
+        foreach ($this->children[$n['parentId'] ?? 0] ?? [] as $id) {
+            if ($id === $n['id'] || $this->isClickable($this->byId[$id])) continue;
+            $price = $this->parsePrice($this->byId[$id]['text'] ?? '');
+            if ($price !== null && $price['currency'] !== null) return $price;
+        }
+        return null;
+    }
+
+    /** Harga di bagian akhir teks tombol: "Upgrade · 🪙 900" → ['amount' => 900, 'currency' => 'Coins'] */
+    private function priceInText(string $text): ?array
+    {
+        if (!preg_match('/[·|•-]\s*(.+)$/u', $text, $m) && !preg_match('/((?:💎|💰|🪙|\$)\s*\d[\d.,]*\s*\w*)$/u', $text, $m)) {
+            return null;
+        }
+        $price = $this->parsePrice($m[1]);
+        return ($price !== null && $price['currency'] !== null) ? $price : null;
     }
 
     private function currencyIn(string $text): ?string

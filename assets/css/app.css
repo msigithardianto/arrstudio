@@ -530,6 +530,20 @@ body {
   color: #f4f4f6;
 }
 
+/* Toggle auto-convert (user login) */
+.auto-convert {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 4px;
+  font-size: 10px;
+  color: var(--text-dim);
+  cursor: pointer;
+  user-select: none;
+}
+.auto-convert[hidden] { display: none; }
+.auto-convert input { accent-color: var(--gold); margin: 0; }
+
 /* Tombol ⚡ Convert (guest: tampil sisa kuota) */
 .btn-convert {
   display: inline-flex;

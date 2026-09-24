@@ -235,6 +235,7 @@ class HtmlParser {
             'name' => '',
             'explicitName' => $explicitName,
             'sourceId' => $id,
+            'className' => trim((string)$class),
             'alt' => $tag === 'img' ? $el->getAttribute('alt') : '',
 
             'x' => $x, 'y' => $y, 'w' => $w, 'h' => $h,
