@@ -15,6 +15,7 @@ $navItems = [
 $toolItems = [
     ['id' => 'spoofer', 'label' => 'Auto Spoof', 'desc' => 'Re-upload aset massal ke akunmu', 'url' => url('spoofer')],
     ['id' => 'ytmp3',   'label' => 'YT → MP3',   'desc' => 'Convert link YouTube + speed/pitch', 'url' => url('ytmp3')],
+    ['id' => 'history', 'label' => 'Riwayat Upload', 'desc' => 'Semua aset yang sudah kamu upload', 'url' => url('history')],
 ];
 $toolsActive = in_array($activePage, array_column($toolItems, 'id'), true);
 

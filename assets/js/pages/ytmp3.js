@@ -501,6 +501,7 @@ return AudioCompensation
         creatorType: rcfg.creatorType,
         creatorId: rcfg.creatorId,
         token: it.token,
+        videoId: it.videoId,
         name: it.label,
       });
       // Roblox masih memproses → polling status operasi

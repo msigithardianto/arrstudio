@@ -12,6 +12,7 @@ $router->get('docs',      'DocsController@index');
 $router->get('prompt',    'PromptController@index');
 $router->get('spoofer',   'SpooferController@index');
 $router->get('ytmp3',     'YtMp3Controller@index');
+$router->get('history',   'HistoryController@index');
 
 // ============================================================
 // AUTH
