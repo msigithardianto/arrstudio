@@ -38,7 +38,7 @@ class ExportService
             'script'       => LuaGenerator::generateBehaviorScript($nodes, $ui),
             'fullscript'   => FullScriptGenerator::generateFullScript($nodes, $width, $height, $ui),
             'tree'         => LuaGenerator::renderTreeText($nodes),
-            'rbxmx'        => RbxmxGenerator::generate($nodes, $width, $height, $ui, $spec['actions'] || $spec['currencies'] ? $logic : []),
+            'rbxmx'        => RbxmxGenerator::generate($nodes, $width, $height, $ui, $logic),   // paket selalu lengkap
             'plugin'       => PluginGenerator::generate(),
             'billboard'    => BillboardGenerator::generate($billboard ?? self::DEFAULT_BILLBOARD),
             'report'       => LuaGenerator::renderReport($nodes),

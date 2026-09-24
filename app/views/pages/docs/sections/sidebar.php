@@ -23,10 +23,14 @@
 
   <div class="docs-side-title">Reference</div>
   <a class="docs-link" data-doc="html">
-    <span class="docs-link-icon">📄</span> HTML Support
+    <span class="docs-link-icon">📄</span> HTML & CSS
   </a>
   <a class="docs-link" data-doc="actions">
     <span class="docs-link-icon">🎯</span> Actions & Toggle
+  </a>
+  <a class="docs-link" data-doc="logic">
+    <span class="docs-link-icon">🧠</span> Game Logic
+    <span class="docs-link-badge">New</span>
   </a>
   <a class="docs-link" data-doc="output">
     <span class="docs-link-icon">📦</span> Output Files
@@ -34,8 +38,7 @@
 
   <div class="docs-side-title">Advanced</div>
   <a class="docs-link" data-doc="plugin">
-    <span class="docs-link-icon">⚡</span> Roblox Plugin
-    <span class="docs-link-badge">New</span>
+    <span class="docs-link-icon">🔌</span> Plugin & Install Pack
   </a>
   <a class="docs-link" data-doc="api">
     <span class="docs-link-icon">🔌</span> API Reference

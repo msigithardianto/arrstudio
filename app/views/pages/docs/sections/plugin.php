@@ -2,30 +2,36 @@
 // app/views/pages/docs/sections/plugin.php
 ?>
 <section class="docs-section" data-doc="plugin">
-  <h1 data-anchor="plugin">Roblox Plugin <a class="anchor" href="#plugin">#</a></h1>
-  <p>Plugin adalah cara paling cepat untuk import UI ke Roblox Studio.</p>
+  <h1 data-anchor="plugin">Plugin &amp; Install Pack <a class="anchor" href="#plugin">#</a></h1>
+  <p>Plugin ARRR Studio v5 memasang paket .rbxmx ke tempat yang benar dalam 1 klik.</p>
 
-  <h2 data-anchor="plg-install">Cara Install</h2>
+  <h2 data-anchor="plg-install">Pasang Plugin (sekali saja)</h2>
   <ol>
-    <li>Download file <code>ArrStudioImporter.lua</code> dari tombol Plugin</li>
-    <li>Buka Roblox Studio → <strong>Plugins</strong> tab → <strong>Plugins Folder</strong></li>
-    <li>Copy file <code>.lua</code> ke folder yang terbuka</li>
-    <li>Restart Roblox Studio</li>
-    <li>Toolbar <strong>ARRR Studio</strong> akan muncul</li>
+    <li>Klik <strong>🔌 Plugin</strong> di navbar converter → <strong>Download Plugin</strong> (<code>ArrStudioImporter.lua</code>)</li>
+    <li>Studio → tab <strong>Plugins</strong> → <strong>Plugins Folder</strong> → taruh file di sana</li>
+    <li>Restart Roblox Studio — toolbar <strong>ARRR Studio</strong> muncul</li>
   </ol>
 
-  <h2 data-anchor="plg-usage">Cara Pakai</h2>
+  <h2 data-anchor="plg-pack">📦 Install Pack</h2>
   <ol>
-    <li>Klik tombol <strong>Import UI</strong> di toolbar</li>
-    <li>Paste Lua script hasil generate</li>
-    <li>Klik <strong>Build</strong> — UI langsung muncul di StarterGui</li>
+    <li>Converter → <strong>⬇ Export .rbxmx</strong></li>
+    <li>Studio → klik kanan <strong>Workspace → Insert from File</strong> → pilih file</li>
+    <li>Buka widget plugin → <strong>📦 Install Pack</strong></li>
   </ol>
+  <p>
+    Isi <code>ArrUIPack</code> dipindah ke <code>StarterGui</code>, <code>ReplicatedStorage</code>,
+    <code>ServerScriptService</code>, dan <code>StarterPlayer › StarterPlayerScripts</code>.
+    Instance dengan nama sama diganti, folder <code>ArrUI</code> di-merge. Bisa di-undo (<kbd>Ctrl+Z</kbd>).
+  </p>
 
-  <div class="callout">
-    <span class="callout-icon">💡</span>
+  <h2 data-anchor="plg-build">🔨 Build dari Lua</h2>
+  <p>Alternatif: copy tab <strong>Full Lua</strong> atau <strong>Billboard</strong>, paste di widget, klik <strong>Build</strong>.</p>
+
+  <div class="callout warn">
+    <span class="callout-icon">⚠️</span>
     <div>
-      <strong>Tips:</strong> Bisa juga pakai file <code>.rbxmx</code> kalau
-      nggak mau install plugin — hasilnya sama.
+      Aktifkan <code>Game Settings → Security → Enable Studio Access to API Services</code>
+      (untuk <code>loadstring</code> di Build dan DataStore di Game Logic).
     </div>
   </div>
 </section>

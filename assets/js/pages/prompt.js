@@ -197,20 +197,19 @@ OUTPUT:
       let prompt = `Buatkan HTML untuk ${uiType} Roblox yang akan di-convert pakai ARRR Studio Converter.
 
 ═══════════════════════════════════════════
-ATURAN CONVERTER (WAJIB DIPATUHI)
+ATURAN CONVERTER ARRR STUDIO v5 (WAJIB DIPATUHI)
 ═══════════════════════════════════════════
-- SEMUA elemen pakai position:absolute + left/top/width/height dalam px
-- Canvas ukuran 800×600 px — semua elemen harus masuk canvas
-- JANGAN pakai display:flex atau display:grid
-- JANGAN pakai %, em, rem, vh, vw, calc(), clamp()
-- JANGAN pakai box-shadow, filter, transform, transition, animation
-- JANGAN pakai ::before, ::after, :hover, :focus (di CSS)
-- Cuma boleh tag: div, span, p, button, input, img, h1-h6, label, ul, ol, li
-- JANGAN pakai tag: canvas, svg, video, iframe, form, table, select, option
-- Font: Arial / Source Sans, size dalam px
-- Warna hex atau rgba
-- Border-radius dalam px
-- Icon pakai emoji (bukan image URL)
+- Boleh pakai <style> + class, display:flex, display:grid, margin, padding (converter membaca hasil render browser)
+- Satu elemen root pembungkus UI, ukuran muat di 800×600 px
+- Warna solid atau linear-gradient; border & border-radius boleh (termasuk per sisi / sebagian)
+- transform: rotate() boleh; JANGAN skew
+- JANGAN pakai box-shadow, text-shadow, filter, backdrop-filter, radial-gradient, ::before / ::after
+- Icon pakai emoji (JANGAN image URL — Roblox butuh rbxassetid)
+- Font: Inter / Poppins / Montserrat / Roboto / Arial, size dalam px
+- Tombol pakai <button> dengan teks jelas: Buy, Sell, Equip, Claim, Upgrade, Redeem, Spin, Craft, Accept, Decline, Save
+- Harga ditulis sebagai teks + ikon mata uang ("💎 2,500", "🪙 900", "$0.99"); saldo pemain di header ("💎 12,450")
+- Card item = satu container: ikon, nama, rarity (Common/Rare/Epic/Legendary), harga
+- Panel tersembunyi: display:none + id "xxx-panel", tombol buka id "xxx-toggle", tombol tutup id "xxx-close"
 
 ═══════════════════════════════════════════
 DESKRIPSI UI
@@ -273,8 +272,7 @@ ${notes}\n`;
 OUTPUT
 ═══════════════════════════════════════════
 - Full HTML siap paste ke ARRR Studio Converter input panel
-- Pakai inline style (style="...")
-- JANGAN pakai CSS external, JANGAN pakai <style> tag
+- CSS di dalam satu <style> + class (atau inline style), JANGAN CSS external / framework
 - Jangan jelasin panjang, langsung kode
 - Setelah HTML, kasih 1 baris catatan: "Paste HTML ini ke ARRR Studio Converter"`;
 
@@ -299,7 +297,7 @@ Text color putih #ffffff, font Arial bold 12px`;
           if (f.includes('Hover')) cb.classList.add('checked');
           else cb.classList.remove('checked');
         });
-        document.getElementById('genNotes').value = 'Posisi HUD di pojok kiri bawah canvas, semua pakai absolute positioning';
+        document.getElementById('genNotes').value = 'Posisi HUD di pojok kiri bawah, saldo koin "🪙 8,420" di pojok kanan atas';
         generatePrompt();
       });
     }
