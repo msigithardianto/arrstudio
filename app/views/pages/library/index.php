@@ -22,8 +22,10 @@
         <button class="lib-filter active" data-filter="all">All</button>
         <button class="lib-filter" data-filter="layout">Layout</button>
         <button class="lib-filter" data-filter="ui">UI</button>
+        <button class="lib-filter" data-filter="hud">HUD</button>
+        <button class="lib-filter" data-filter="menu">Menu</button>
         <button class="lib-filter" data-filter="rpg">RPG</button>
-        <button class="lib-filter" data-filter="commerce">Shop</button>
+        <button class="lib-filter" data-filter="commerce">Shop &amp; Reward</button>
       </div>
     </div>
 

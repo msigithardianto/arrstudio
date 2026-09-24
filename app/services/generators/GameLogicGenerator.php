@@ -6,9 +6,10 @@
 
 class GameLogicGenerator
 {
-    public static function generate(array $nodes): array
+    public static function generate(array $nodes, ?array $spec = null, array $ui = []): array
     {
-        $spec = (new GuiAnalyzer())->analyze($nodes);
+        $spec ??= (new GuiAnalyzer())->analyze($nodes);
+        $spec['gui'] = $ui['gui'] ?? 'GeneratedUI';
 
         return [
             'module' => self::module($spec),
@@ -24,9 +25,11 @@ class GameLogicGenerator
     private static function module(array $spec): string
     {
         $a = array_flip($spec['actions']);
+        $price = fn(string $action) => current(array_filter(array_column(
+            array_filter($spec['bindings'], fn($b) => $b['action'] === $action), 'price'))) ?: null;
 
         $cfg = [
-            'ScreenGuiName' => 'GeneratedUI',
+            'ScreenGuiName' => $spec['gui'] ?? 'GeneratedUI',
             'Cooldown'      => 0.4,
             'UseDataStore'  => true,
             'DataStoreName' => 'ArrUI_PlayerData_v1',
@@ -36,9 +39,16 @@ class GameLogicGenerator
         ];
         if (isset($a['Sell']))    $cfg['SellRatio'] = 0.5;
         if (isset($a['Claim']))   $cfg['Claim'] = ['Currency' => self::mainCurrency($spec), 'Amount' => 100, 'CooldownSeconds' => 86400];
-        if (isset($a['Upgrade'])) $cfg['Upgrade'] = ['Currency' => self::mainCurrency($spec), 'BaseCost' => 100, 'CostMultiplier' => 1.5, 'MaxLevel' => 50];
+        if (isset($a['Upgrade'])) {
+            $p = $price('Upgrade');
+            $cfg['Upgrade'] = ['Currency' => $p['currency'] ?? self::mainCurrency($spec), 'BaseCost' => $p['amount'] ?? 100, 'CostMultiplier' => 1.5, 'MaxLevel' => 50];
+        }
+        if (isset($a['Revive'])) {
+            $p = $price('Revive');
+            $cfg['Revive'] = ['Currency' => $p['currency'] ?? self::mainCurrency($spec), 'Cost' => $p['amount'] ?? 20];
+        }
         if (isset($a['Redeem']))  $cfg['Codes'] = ['WELCOME' => ['Currency' => self::mainCurrency($spec), 'Amount' => 250]];
-        if (isset($a['Spin']))    $cfg['Spin'] = ['Currency' => self::mainCurrency($spec), 'Cost' => 100, 'Rewards' => [
+        if (isset($a['Spin']))    $cfg['Spin'] = ['Currency' => $price('Spin')['currency'] ?? self::mainCurrency($spec), 'Cost' => $price('Spin')['amount'] ?? 100, 'Rewards' => [
             ['Weight' => 60, 'Amount' => 50], ['Weight' => 30, 'Amount' => 150], ['Weight' => 10, 'Amount' => 500],
         ]];
         if (isset($a['Craft']))   $cfg['CraftCost'] = 200;
@@ -375,6 +385,29 @@ LUA;
 function Handlers.DeclineQuest(player, questId)
 	if player:GetAttribute("ActiveQuest") == questId then player:SetAttribute("ActiveQuest", nil) end
 	return true, "Quest ditolak"
+end
+LUA;
+        if (isset($a['Revive'])) $L[] = <<<'LUA'
+
+function Handlers.Revive(player)
+	local ok, err = spend(player, Config.Revive.Currency, Config.Revive.Cost)
+	if not ok then return false, err end
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local spot = root and root.CFrame
+	player:LoadCharacter()
+	if spot then
+		local newRoot = player.Character and player.Character:WaitForChild("HumanoidRootPart", 5)
+		if newRoot then newRoot.CFrame = spot end
+	end
+	return true, "Bangkit kembali!"
+end
+LUA;
+        if (isset($a['Respawn'])) $L[] = <<<'LUA'
+
+function Handlers.Respawn(player)
+	player:LoadCharacter()
+	return true, nil
 end
 LUA;
         if (isset($a['DialogueChoice'])) $L[] = <<<'LUA'

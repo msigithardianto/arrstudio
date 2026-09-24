@@ -2,7 +2,8 @@
 // app/services/generators/LuaGenerator.php — behavior script, tree & report
 class LuaGenerator {
 
-    public static function generateBehaviorScript($nodes) {
+    public static function generateBehaviorScript($nodes, array $ui = []) {
+        $ui += ['name' => 'Canvas', 'gui' => 'GeneratedUI', 'singleRoot' => false];
         $L = [];
         $L[] = '-- ============================================================';
         $L[] = '--  BEHAVIOR SCRIPT (RunContext = Client, Parent = ScreenGui)';
@@ -16,9 +17,9 @@ class LuaGenerator {
         $L[] = '    return';
         $L[] = 'end';
         $L[] = '';
-        $L[] = 'local canvas = screenGui:WaitForChild("Canvas", 10)';
+        $L[] = 'local canvas = screenGui:WaitForChild(' . LuaHelper::q($ui['name']) . ', 10)';
         $L[] = 'if not canvas then';
-        $L[] = '    warn("[ArrStudio] Canvas tidak ditemukan di ScreenGui")';
+        $L[] = '    warn("[ArrStudio] ' . $ui['name'] . ' tidak ditemukan di ScreenGui")';
         $L[] = '    return';
         $L[] = 'end';
         $L[] = '';
@@ -59,7 +60,7 @@ class LuaGenerator {
 
         // FIX: Path generation pakai safeFind chain, bukan WaitForChild berantai
         // Biar nggak error kalau node belum ke-load
-        $pathOf = function($n) use ($idToNode) {
+        $pathOf = function($n) use ($idToNode, $ui) {
             $parts = [$n['name']];
             $cur = $n;
             while (!empty($cur['parentId'])) {
@@ -67,6 +68,10 @@ class LuaGenerator {
                 if (!$cur) break;
                 array_unshift($parts, $cur['name']);
             }
+            // Root = canvas itu sendiri (mode singleRoot)
+            if ($ui['singleRoot']) array_shift($parts);
+            if (!$parts) return 'canvas';
+
             // Bangun chain: safeFind(safeFind(safeFind(canvas, "A"), "B"), "C")
             $path = 'canvas';
             foreach ($parts as $p) {
