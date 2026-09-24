@@ -18,6 +18,7 @@
   let running = false;
   let stopped = false;
   let files   = [];
+  let entries = [];     // hasil parseEntries saat Mulai — dipakai format "Sesuai input"
 
   /* ============================================================
      STORAGE (per browser) — API key hanya kalau "Ingat" dicentang
@@ -48,18 +49,32 @@
   /* ============================================================
      PARSE INPUT
      ============================================================ */
-  // Ambil angka pertama tiap token: "123", "rbxassetid://123", ".../library/123/Nama"
-  function parseIds(text) {
-    const seen = new Set();
-    const out  = [];
-    text.split(/[\s,;]+/).forEach(tok => {
-      const m = tok.match(/\d{3,20}/);
-      if (m && !seen.has(m[0])) {
-        seen.add(m[0]);
-        out.push(m[0]);
+  // Baris "Nama Lagu{123}" / "Nama{123,456}" → entry bernama (format dipertahankan di output).
+  // Selain itu: angka pertama tiap token — "123", "rbxassetid://123", ".../library/123/Nama"
+  function parseEntries(text) {
+    const entries = [];
+    text.split(/\r?\n/).forEach(line => {
+      const m = line.match(/^(.*?)\s*\{\s*([\d\s,]+)\}\s*$/);
+      if (m) {
+        const ids = (m[2].match(/\d{3,20}/g) || []);
+        if (ids.length) entries.push({ name: m[1].trim(), ids });
+        return;
       }
+      line.split(/[\s,;]+/).forEach(tok => {
+        const n = tok.match(/\d{3,20}/);
+        if (n) entries.push({ name: '', ids: [n[0]] });
+      });
     });
-    return out;
+    return entries;
+  }
+
+  // ID unik (urut sesuai input) + nama pertama yang dipakai ID itu
+  function parseIds(text) {
+    const seen = new Map();
+    parseEntries(text).forEach(e => e.ids.forEach(id => {
+      if (!seen.has(id)) seen.set(id, e.name);
+    }));
+    return Array.from(seen, ([id, name]) => ({ id, name }));
   }
 
   function updateCounts() {
@@ -116,6 +131,16 @@
       case 'rbx':   text = ok.map(i => 'rbxassetid://' + i.newId).join('\n'); break;
       case 'comma': text = ok.map(i => i.newId).join(', '); break;
       case 'map':   text = ok.map(i => i.label + ' → ' + i.newId).join('\n'); break;
+      case 'list': {
+        // Sama persis dengan input, ID lama diganti ID baru. Baris yang semua ID-nya gagal dilewati.
+        const byId = new Map(ok.map(i => [i.source, i.newId]));
+        text = entries.map(e => {
+          const ids = e.ids.map(id => byId.get(id)).filter(Boolean);
+          if (!ids.length) return null;
+          return e.name ? `${e.name}{${ids.join(',')}}` : ids.join('\n');
+        }).filter(Boolean).join('\n');
+        break;
+      }
       case 'lua':
         text = 'return {\n' + ok.map(i => /^\d+$/.test(i.label)
           ? `\t[${i.label}] = ${i.newId},`
@@ -170,7 +195,7 @@
         creatorType: cfg.creatorType,
         creatorId: cfg.creatorId,
         assetId: it.source,
-        name: cfg.name ? cfg.name + ' ' + it.source : '',
+        name: cfg.name ? cfg.name + ' ' + it.source : (it.name || ''),
       });
     }
 
@@ -218,11 +243,14 @@
 
     if (activeTab() === 'files') {
       if (!files.length) return showToast('Pilih file dulu', 'error');
+      entries = [];
       items = files.map(f => ({ source: f.name, label: f.name, file: f, status: 'wait' }));
     } else {
       const ids = parseIds($('spIds').value);
       if (!ids.length) return showToast('Tempel minimal 1 asset ID', 'error');
-      items = ids.map(id => ({ source: id, label: id, status: 'wait' }));
+      entries = parseEntries($('spIds').value);
+      items = ids.map(({ id, name }) => ({ source: id, name, label: name ? `${name} (${id})` : id, status: 'wait' }));
+      if (ids.some(i => i.name)) $('spFormat').value = 'list';
     }
 
     saveSettings();

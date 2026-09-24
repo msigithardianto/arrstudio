@@ -74,7 +74,7 @@ $isLoggedIn = Auth::check();
 
         <div class="sp-pane active" data-sp-pane="ids">
           <textarea id="spIds" class="sp-input sp-textarea" spellcheck="false"
-            placeholder="Satu per baris / pisah koma. Bisa juga link:&#10;123456789&#10;rbxassetid://987654321&#10;https://www.roblox.com/library/111222333/Nama"></textarea>
+            placeholder="Satu per baris / pisah koma. Bisa juga link atau format Nama{ID}:&#10;123456789&#10;rbxassetid://987654321&#10;https://www.roblox.com/library/111222333/Nama&#10;Nama Lagu{123456789}"></textarea>
           <p class="sp-hint" id="spIdCount">0 ID terdeteksi</p>
         </div>
 
@@ -117,6 +117,7 @@ $isLoggedIn = Auth::check();
       <div class="sp-output-head">
         <label class="sp-label" for="spFormat">Format output</label>
         <select id="spFormat" class="sp-input sp-select sp-format">
+          <option value="list">Sesuai input (Nama{ID})</option>
           <option value="ids">ID saja (per baris)</option>
           <option value="rbx">rbxassetid://ID</option>
           <option value="comma">ID dipisah koma</option>
