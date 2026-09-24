@@ -113,7 +113,7 @@
         <td class="sp-mono">${esc(it.label)}</td>
         <td><span class="sp-status ${it.status}">${esc(it.status === 'err' ? it.error : (it.note || STATUS_LABEL[it.status]))}</span></td>
         <td class="sp-mono">${it.newId
-          ? esc(it.newId) + `<span class="sp-mod">${it.mod || it.modErr ? moderationBadge(it.mod, it.modErr) : '<span class="sp-status run">Menunggu review…</span>'}</span>`
+          ? esc(it.newId) + ' ' + copyIcon(it.newId) + `<span class="sp-mod">${it.mod || it.modErr ? moderationBadge(it.mod, it.modErr) : '<span class="sp-status run">Menunggu review…</span>'}</span>`
           : '—'}</td>
       </tr>`).join('');
   }
@@ -361,20 +361,102 @@
     ['spUniverseId', 'ytUniverseId', 'hsUniverseId'].forEach(f => { if ($(f)) $(f).value = id; });
   }
 
-  function grantSummaryHtml(r) {
+  /** Ringkasan hasil izin game / publik. mode: 'game' | 'public' */
+  function grantSummaryHtml(r, mode) {
+    const isPublic  = mode === 'public';
     const failedIds = Object.keys(r.failed);
     // Kelompokkan alasan yang sama biar tidak panjang
     const byReason = {};
     failedIds.forEach(id => { (byReason[r.failed[id]] = byReason[r.failed[id]] || []).push(id); });
+    const doneText = isPublic
+      ? `${r.granted.length} aset dijadikan publik`
+      : `${r.granted.length} aset diizinkan${r.universeId ? ' ke game ' + esc(r.universeId) : ''}`;
     const rows = (r.placeId
       ? [`<li class="warn">${esc(r.placeId)} itu Place ID → dipakai Universe ID ${esc(r.universeId)} (sudah disimpan)</li>`]
       : [])
-      .concat([`<li class="${r.granted.length ? 'ok' : 'warn'}">${r.granted.length} aset diizinkan${r.universeId ? ' ke game ' + esc(r.universeId) : ''}</li>`])
+      .concat([`<li class="${r.granted.length ? 'ok' : 'warn'}">${doneText}</li>`])
       .concat(Object.entries(byReason).map(([reason, list]) =>
         `<li class="err">${list.length} gagal: ${esc(reason)} <span class="sp-mono">(${esc(list.slice(0, 5).join(', '))}${list.length > 5 ? ', …' : ''})</span></li>`));
-    return `<p><b>${failedIds.length ? 'Sebagian gagal' : 'Semua aset sudah diizinkan ke game'}</b></p><ul>${rows.join('')}</ul>`;
+    const title = failedIds.length
+      ? (r.granted.length ? 'Sebagian gagal' : 'Gagal')
+      : (isPublic ? 'Semua aset sudah publik' : 'Semua aset sudah diizinkan ke game');
+    const buttons = [
+      r.granted.length ? copyButton(r.granted.join('\n'), `Copy ${r.granted.length} ID berhasil`) : '',
+      failedIds.length ? copyButton(failedIds.join('\n'), `Copy ${failedIds.length} ID gagal`) : '',
+      failedIds.length ? copyButton(failedIds.map(id => `${id}: ${r.failed[id]}`).join('\n'), 'Copy pesan error') : '',
+    ].filter(Boolean).join('');
+    return `<p><b>${title}</b></p><ul>${rows.join('')}</ul>${buttons ? `<div class="sp-copy-row">${buttons}</div>` : ''}`;
   }
   window.ArrrGrantSummary = grantSummaryHtml;
+
+  /* ============================================================
+     JADIKAN PUBLIK — gambar / decal / mesh (audio tidak bisa lewat API)
+     ============================================================ */
+  // → {granted:[...], failed:{id: alasan}}
+  async function makePublic(apiKey, ids) {
+    const granted = [];
+    const failed  = {};
+    for (let i = 0; i < ids.length; i += 200) {
+      const part = ids.slice(i, i + 200);
+      try {
+        const r = await callApi({ action: 'public', apiKey, assetIds: part });
+        granted.push(...r.granted);
+        Object.assign(failed, r.failed || {});
+      } catch (e) {
+        part.forEach(id => { failed[id] = e.message; });
+      }
+    }
+    return { granted, failed };
+  }
+  window.ArrrPublic = makePublic;
+
+  /* ============================================================
+     TOMBOL COPY — <button data-copy="teks"> di halaman mana pun
+     ============================================================ */
+  function copyButton(text, label, cls) {
+    return `<button type="button" class="${cls || 'sp-btn-ghost sp-copy-btn'}" data-copy="${esc(text)}">${esc(label)}</button>`;
+  }
+  /** Tombol kecil ⧉ di sebelah asset ID */
+  function copyIcon(id) {
+    return `<button type="button" class="sp-copy" data-copy="${esc(id)}" title="Copy ${esc(id)}" aria-label="Copy ${esc(id)}">⧉</button>`;
+  }
+  window.ArrrCopyButton = copyButton;
+  window.ArrrCopyIcon   = copyIcon;
+
+  function copyText(text) {
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text);
+    // http:// (XAMPP tanpa HTTPS) → clipboard API tidak ada, pakai textarea
+    return new Promise((resolve, reject) => {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;top:0;left:0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      ta.remove();
+      ok ? resolve() : reject(new Error('copy gagal'));
+    });
+  }
+  window.ArrrCopyText = copyText;
+
+  if (!window.__arrrCopyBound) {
+    window.__arrrCopyBound = true;
+    document.addEventListener('click', (e) => {
+      const btn = e.target.closest('[data-copy]');
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const text  = btn.getAttribute('data-copy');
+      const lines = text.split('\n').length;
+      copyText(text)
+        .then(() => {
+          showToast(lines > 1 ? `${lines} baris di-copy` : `${text.length > 40 ? 'Teks' : text} di-copy`);
+          btn.classList.add('copied');
+          setTimeout(() => btn.classList.remove('copied'), 1200);
+        })
+        .catch(() => showToast('Gagal copy', 'error'));
+    });
+  }
 
   /* ============================================================
      STATUS REVIEW ROBLOX — helper dipakai spoofer, ytmp3, history
@@ -474,8 +556,29 @@
     const box = $('spGrantResult');
     box.hidden = false;
     box.className = 'sp-check-result ' + (Object.keys(r.failed).length ? 'err' : 'ok');
-    box.innerHTML = grantSummaryHtml(r);
+    box.innerHTML = grantSummaryHtml(r, 'game');
     showToast(`${r.granted.length}/${ids.length} aset diizinkan ke game`, r.granted.length === ids.length ? 'success' : 'warning', 3500);
+  }
+
+  async function publicFromBox() {
+    const apiKey = $('spApiKey').value.trim();
+    const ids    = parseIds($('spGrantIds').value).map(x => x.id);
+    if (!apiKey) return showToast('Masukkan API key Roblox dulu', 'error');
+    if (!ids.length) return showToast('Tempel minimal 1 asset ID', 'error');
+    if (!confirm(`Jadikan ${ids.length} aset PUBLIK? Siapa saja bisa memakai aset ini di game mereka.`)) return;
+
+    const btn = $('spPublic');
+    btn.disabled = true;
+    $('spGrantStatus').textContent = `Menjadikan ${ids.length} aset publik…`;
+    const r = await makePublic(apiKey, ids);
+    if (!$('spPublic')) return;   // pindah halaman (SPA)
+    btn.disabled = false;
+    $('spGrantStatus').textContent = `${r.granted.length}/${ids.length} publik`;
+    const box = $('spGrantResult');
+    box.hidden = false;
+    box.className = 'sp-check-result ' + (Object.keys(r.failed).length ? 'err' : 'ok');
+    box.innerHTML = grantSummaryHtml(r, 'public');
+    showToast(`${r.granted.length}/${ids.length} aset jadi publik`, r.granted.length === ids.length ? 'success' : 'warning', 3500);
   }
 
   /* ============================================================
@@ -604,6 +707,7 @@
     root.addEventListener('click', start);
     $('spCheck').addEventListener('click', checkConnection);
     $('spGrant').addEventListener('click', grantFromBox);
+    $('spPublic').addEventListener('click', publicFromBox);
     $('spGrantFill').addEventListener('click', () => {
       const ids = items.filter(i => i.status === 'ok').map(i => i.newId);
       if (!ids.length) return showToast('Belum ada hasil upload', 'warning');

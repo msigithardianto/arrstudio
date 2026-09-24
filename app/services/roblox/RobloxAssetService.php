@@ -213,8 +213,23 @@ class RobloxAssetService
         return $result + ['universeId' => $universeId];
     }
 
+    /**
+     * Jadikan aset PUBLIK (bisa dipakai siapa saja) — subjectType "All", action "Use".
+     * Menurut spec hanya untuk Decal / Image / Mesh. Audio TIDAK bisa (hanya lewat
+     * "Distribute on Creator Store" di Creator Dashboard).
+     * @return array{granted:list<string>, failed:array<string,string>}
+     */
+    public function grantPublic(array $assetIds): array
+    {
+        $ids    = array_values(array_unique(array_map('strval', $assetIds)));
+        $result = $this->grantBatch(null, $ids);
+        unset($result['subjectProblem']);
+        return $result;
+    }
+
     /** @return array{granted:list<string>, failed:array<string,string>, subjectProblem:bool} */
-    private function grantBatch(string $universeId, array $ids): array
+    /** $universeId null = publik (subjectType All) */
+    private function grantBatch(?string $universeId, array $ids): array
     {
         $granted = [];
         $failed  = [];
@@ -222,8 +237,8 @@ class RobloxAssetService
 
         foreach (array_chunk($ids, self::GRANT_CHUNK) as $chunk) {
             $body = json_encode([
-                'subjectType' => 'Universe',
-                'subjectId'   => $universeId,
+                'subjectType' => $universeId === null ? 'All' : 'Universe',
+                'subjectId'   => $universeId,   // wajib kosong untuk All
                 'action'      => 'Use',
                 'requests'    => array_map(fn($id) => ['assetId' => (int)$id, 'grantToDependencies' => true], $chunk),
             ]);
@@ -277,10 +292,11 @@ class RobloxAssetService
     {
         return match ($code) {
             'CannotManageAsset'      => 'Aset bukan milik pemilik API key (aset grup → pakai API key grup)',
-            'CannotManageSubject'    => 'Tidak punya akses ke game ini — pastikan game milik akun/grup yang sama dengan API key',
+            'CannotManageSubject'    => 'Tidak punya akses ke game ini. Cek: (1) isi Universe ID, bukan Place ID — Creator Dashboard → '
+                                        . 'Creations → ⋯ di game → Copy Universe ID; (2) kalau game milik grup, API key harus dibuat dari grup itu',
             'SubjectNotFound'        => 'Game tidak ditemukan — isi Universe ID (bukan Place ID)',
             'AssetNotFound'          => 'Asset ID tidak ditemukan',
-            'AssetTypeNotEnabled'    => 'Jenis aset ini tidak bisa diberi izin game',
+            'AssetTypeNotEnabled'    => 'Jenis aset ini tidak didukung (audio tidak bisa dijadikan publik lewat API — pakai "Distribute on Creator Store" di Creator Dashboard)',
             'PermissionLimitReached' => 'Batas jumlah izin untuk aset ini sudah tercapai',
             'DependenciesLimitReached' => 'Terlalu banyak dependensi aset',
             default                  => null,

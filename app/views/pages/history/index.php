@@ -85,7 +85,12 @@ $isLoggedIn = Auth::check();
             <input type="text" id="hsUniverseId" class="sp-input hs-universe" placeholder="Universe ID" inputmode="numeric">
             <button type="button" class="sp-start hs-grant" id="hsGrant">Izinkan</button>
           </div>
-          <p class="sp-hint">API key &amp; Universe ID diambil dari setting Auto Spoof kalau sudah disimpan.</p>
+          <div class="sp-row">
+            <button type="button" class="sp-btn-ghost" id="hsPublic"
+                    title="Siapa saja bisa pakai. Hanya gambar / decal / mesh — audio tidak bisa lewat API">Jadikan publik (gambar)</button>
+          </div>
+          <p class="sp-hint">API key &amp; Universe ID diambil dari setting Auto Spoof kalau sudah disimpan.
+            Universe ID: Creator Dashboard → Creations → ⋯ di game → Copy Universe ID. Audio tidak bisa dijadikan publik lewat API.</p>
         </div>
       </div>
 

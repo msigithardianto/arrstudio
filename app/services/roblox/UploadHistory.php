@@ -99,6 +99,26 @@ class UploadHistory
         });
     }
 
+    /** Tandai aset sudah dijadikan publik */
+    public function markPublic(array $assetIds): void
+    {
+        if (!$assetIds) {
+            return;
+        }
+        $set = array_flip(array_map('strval', $assetIds));
+        $this->locked(function (array $list) use ($set) {
+            $changed = false;
+            foreach ($list as &$e) {
+                if (!empty($e['assetId']) && isset($set[$e['assetId']]) && empty($e['public'])) {
+                    $e['public'] = true;
+                    $changed = true;
+                }
+            }
+            unset($e);
+            return [$list, $changed];
+        });
+    }
+
     /** Simpan status review Roblox. $states = [assetId => Reviewing|Approved|Rejected] */
     public function setModeration(array $states): void
     {

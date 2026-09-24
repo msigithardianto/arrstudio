@@ -126,7 +126,8 @@
 
   function assetCell(e) {
     if (!e.assetId) return '<span class="sp-status run">Menunggu Roblox</span>';
-    return `<a href="https://create.roblox.com/dashboard/creations/store/${esc(e.assetId)}/configure" target="_blank" rel="noopener" data-no-spa title="Buka di Creator Dashboard">${esc(e.assetId)}</a>`;
+    return `<a href="https://create.roblox.com/dashboard/creations/store/${esc(e.assetId)}/configure" target="_blank" rel="noopener" data-no-spa title="Buka di Creator Dashboard">${esc(e.assetId)}</a>`
+      + (window.ArrrCopyIcon ? window.ArrrCopyIcon(e.assetId) : '');
   }
 
   function modCell(e) {
@@ -173,7 +174,10 @@
         <td class="hs-src">${sourceCell(e)}</td>
         <td class="hs-asset">${assetCell(e)}</td>
         <td>${modCell(e)}</td>
-        <td class="hs-game ${(e.games || []).length ? '' : 'none'}">${(e.games || []).length ? '✓ ' + esc(e.games.join(', ')) : '—'}</td>
+        <td class="hs-game ${(e.games || []).length || e.public ? '' : 'none'}">${[
+          e.public ? '🌐 publik' : '',
+          (e.games || []).length ? '✓ ' + esc(e.games.join(', ')) : '',
+        ].filter(Boolean).join('<br>') || '—'}</td>
       </tr>`).join('')
       : `<tr class="sp-empty"><td colspan="7">${all.length ? 'Tidak ada yang cocok dengan filter.' : 'Belum ada upload. Upload lewat Auto Spoof / YT → MP3 akan tercatat di sini.'}</td></tr>`;
 
@@ -192,7 +196,7 @@
     $('hsTarget').textContent = selected.size
       ? `${t.length} upload dipilih`
       : `Semua yang tampil (${t.length})`;
-    ['hsCopy', 'hsDownload', 'hsGrant', 'hsDelete'].forEach(id => { $(id).disabled = busy || !t.length; });
+    ['hsCopy', 'hsDownload', 'hsGrant', 'hsPublic', 'hsDelete'].forEach(id => { $(id).disabled = busy || !t.length; });
   }
 
   /* ============================================================
@@ -265,9 +269,32 @@
     busy = false;
     if (!$('hsResult')) return;   // pindah halaman (SPA)
     box.className = 'sp-check-result ' + (Object.keys(r.failed).length ? 'err' : 'ok');
-    box.innerHTML = window.ArrrGrantSummary ? window.ArrrGrantSummary(r) : `${r.granted.length} diizinkan`;
+    box.innerHTML = window.ArrrGrantSummary ? window.ArrrGrantSummary(r, 'game') : `${r.granted.length} diizinkan`;
     showToast(`${r.granted.length}/${ids.length} aset diizinkan ke game`, r.granted.length === ids.length ? 'success' : 'warning', 3500);
     await load(true);   // status game dicatat server
+  }
+
+  async function makePublic() {
+    const apiKey = $('hsApiKey').value.trim();
+    const ids = [...new Set(targets().filter(e => e.assetId && !e.public).map(e => e.assetId))];
+    if (!ids.length) return showToast('Tidak ada aset untuk dijadikan publik', 'warning');
+    if (!apiKey) { $('hsApiKey').focus(); return showToast('Isi API key Roblox dulu', 'error'); }
+    if (typeof window.ArrrPublic !== 'function') return showToast('Modul Auto Spoof belum termuat', 'error');
+    if (!confirm(`Jadikan ${ids.length} aset PUBLIK? Siapa saja bisa memakai aset ini di game mereka.\n\n(Audio tidak bisa — hanya gambar / decal / mesh.)`)) return;
+
+    busy = true;
+    render();
+    const box = $('hsResult');
+    box.hidden = false;
+    box.className = 'sp-check-result';
+    box.innerHTML = `<p>Menjadikan ${ids.length} aset publik…</p>`;
+    const r = await window.ArrrPublic(apiKey, ids);
+    busy = false;
+    if (!$('hsResult')) return;   // pindah halaman (SPA)
+    box.className = 'sp-check-result ' + (Object.keys(r.failed).length ? 'err' : 'ok');
+    box.innerHTML = window.ArrrGrantSummary(r, 'public');
+    showToast(`${r.granted.length}/${ids.length} aset jadi publik`, r.granted.length === ids.length ? 'success' : 'warning', 3500);
+    await load(true);
   }
 
   async function remove() {
@@ -331,6 +358,7 @@
     $('hsCopy').addEventListener('click', copyIds);
     $('hsDownload').addEventListener('click', downloadIds);
     $('hsGrant').addEventListener('click', grant);
+    $('hsPublic').addEventListener('click', makePublic);
     $('hsDelete').addEventListener('click', remove);
     $('hsUniverseId').addEventListener('change', saveUniverse);
 
