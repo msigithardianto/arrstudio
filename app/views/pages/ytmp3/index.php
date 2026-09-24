@@ -23,6 +23,31 @@ $maxMinutes = intdiv((int)config('app.ytmp3.max_duration', 1800), 60);
       </div>
     <?php endif; ?>
 
+    <!-- ===== TOOLS (yt-dlp + ffmpeg) ===== -->
+    <section class="yt-tools" id="ytTools" data-state="loading">
+      <div class="yt-tools-status">
+        <span class="yt-tools-title">Tools</span>
+        <span class="yt-tool" id="ytToolYtdlp"><i></i> yt-dlp <b>cek…</b></span>
+        <span class="yt-tool" id="ytToolFfmpeg"><i></i> ffmpeg <b>cek…</b></span>
+      </div>
+      <div class="yt-tools-actions">
+        <button type="button" class="sp-start yt-tools-btn" id="ytToolsInstall" hidden>Install otomatis</button>
+        <button type="button" class="sp-btn-ghost yt-tools-btn" id="ytToolsUpdate" hidden>Update yt-dlp</button>
+        <button type="button" class="sp-btn-ghost yt-tools-btn" id="ytToolsRefresh">Cek ulang</button>
+      </div>
+      <p class="yt-tools-msg" id="ytToolsMsg"></p>
+      <details class="sp-help yt-tools-help" id="ytToolsHelp" hidden>
+        <summary>Cara install manual (Windows / XAMPP)</summary>
+        <ol>
+          <li>Download <a href="https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe" target="_blank" rel="noopener">yt-dlp.exe</a>.</li>
+          <li>Download <a href="https://github.com/yt-dlp/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip" target="_blank" rel="noopener">ffmpeg (win64 zip)</a>, extract, ambil <code>ffmpeg.exe</code> &amp; <code>ffprobe.exe</code> dari folder <code>bin</code>.</li>
+          <li>Taruh ketiga file di folder project <code>storage\bin\</code> (buat foldernya kalau belum ada).</li>
+          <li>Klik <b>Cek ulang</b>. Tidak perlu setting PATH / restart.</li>
+        </ol>
+        <p>Linux: <code>sudo apt install ffmpeg</code> · macOS: <code>brew install ffmpeg yt-dlp</code>.</p>
+      </details>
+    </section>
+
     <div class="sp-grid yt-grid">
 
       <!-- ===== 1. LINK ===== -->

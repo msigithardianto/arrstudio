@@ -1,14 +1,13 @@
 <?php
 // app/services/media/YoutubeMp3Service.php — konversi link YouTube → MP3 lewat yt-dlp + ffmpeg
 //
-// Dipakai fitur YT → MP3 (konversi massal). Butuh binary di server:
-//   - yt-dlp  (https://github.com/yt-dlp/yt-dlp)  → env YTDLP_BIN  (default: "yt-dlp")
-//   - ffmpeg                                      → env FFMPEG_BIN (opsional, default: cari di PATH)
+// Dipakai fitur YT → MP3 (konversi massal). Butuh yt-dlp + ffmpeg — lokasinya diatur
+// MediaTools (.env → storage/bin hasil "Install otomatis" → PATH). Jalan di Windows & Linux.
 //
 // Keamanan:
 //   - URL TIDAK pernah diteruskan mentah ke yt-dlp — hanya video ID / playlist ID hasil regex,
 //     lalu dibangun ulang jadi URL youtube.com (cegah SSRF & argumen nyasar).
-//   - Proses dijalankan lewat proc_open(array) → tanpa shell.
+//   - Proses dijalankan lewat ProcessRunner (proc_open array) → tanpa shell.
 //   - Hasil disimpan di storage/ytmp3/<token>/ (diblok .htaccess), dihapus otomatis setelah TTL.
 
 class YoutubeMp3Service
@@ -25,7 +24,8 @@ class YoutubeMp3Service
     private const PLAYLIST_RE = '[A-Za-z0-9_-]{10,64}';
 
     private string $ytdlp;
-    private ?string $ffmpeg;
+    private string $ffmpeg;
+    private ?string $ffmpegLocation;
     private string $dir;
     private int $maxDuration;
     private int $maxPlaylist;
@@ -36,8 +36,9 @@ class YoutubeMp3Service
     {
         $cfg = config('app.ytmp3', []);
 
-        $this->ytdlp       = (string)(env('YTDLP_BIN') ?: 'yt-dlp');
-        $this->ffmpeg      = env('FFMPEG_BIN') ?: null;
+        $this->ytdlp          = MediaTools::ytdlp();
+        $this->ffmpeg         = MediaTools::ffmpeg();
+        $this->ffmpegLocation = MediaTools::ffmpegLocation();
         $this->dir         = (string)($cfg['dir'] ?? STORAGE_PATH . '/ytmp3');
         $this->maxDuration = (int)($cfg['max_duration'] ?? 1800);
         $this->maxPlaylist = (int)($cfg['max_playlist'] ?? 50);
@@ -112,12 +113,20 @@ class YoutubeMp3Service
      */
     public function playlist(string $playlistId): array
     {
-        $out = $this->run([
-            '--flat-playlist',
-            '--playlist-end', (string)$this->maxPlaylist,
-            '--print', '%(id)s\t%(title)s',
-            'https://www.youtube.com/playlist?list=' . $playlistId,
-        ], 60);
+        // --print-to-file → UTF-8 (stdout di Windows bisa merusak judul non-Latin)
+        $listFile = tempnam(sys_get_temp_dir(), 'ytpl');
+        try {
+            $this->run([
+                '--flat-playlist',
+                '--skip-download',
+                '--playlist-end', (string)$this->maxPlaylist,
+                '--print-to-file', "%(id)s\t%(title)s", self::outtmplPath($listFile),
+                'https://www.youtube.com/playlist?list=' . $playlistId,
+            ], 60);
+            $out = (string)file_get_contents($listFile);
+        } finally {
+            @unlink($listFile);
+        }
 
         $items = [];
         foreach (preg_split('/\R/', trim($out)) as $line) {
@@ -163,21 +172,21 @@ class YoutubeMp3Service
             '--no-warnings',
             '--no-mtime',
             '--restrict-filenames',
-            '--match-filter', '!is_live & duration <= ' . $this->maxDuration,
+            '--match-filter', '!is_live & duration <=? ' . $this->maxDuration,
             '-f', 'bestaudio/best',
             '-x', '--audio-format', 'mp3', '--audio-quality', $bitrate . 'K',
             '--embed-metadata',
-            '--print', 'after_move:%(title)s\t%(duration)s',
+            '--print-to-file', "after_move:%(title)s\t%(duration)s", self::outtmplPath($dir . '/info.txt'),
             '-P', $dir,
             '-o', 'audio.%(ext)s',
         ];
-        if ($this->ffmpeg) {
-            array_push($args, '--ffmpeg-location', $this->ffmpeg);
+        if ($this->ffmpegLocation !== null) {
+            array_push($args, '--ffmpeg-location', $this->ffmpegLocation);
         }
         $args[] = 'https://www.youtube.com/watch?v=' . $videoId;
 
         try {
-            $out = $this->run($args, $this->timeout);
+            $this->run($args, $this->timeout);
         } catch (Throwable $e) {
             self::removeDir($dir);
             throw $e;
@@ -190,7 +199,9 @@ class YoutubeMp3Service
             throw new RuntimeException('Video dilewati: live / lebih dari ' . intdiv($this->maxDuration, 60) . ' menit');
         }
 
-        [$title, $duration] = array_pad(explode("\t", trim(strtok($out, "\n") ?: ''), 2), 2, '');
+        $info = is_file($dir . '/info.txt') ? (string)file_get_contents($dir . '/info.txt') : '';
+        @unlink($dir . '/info.txt');
+        [$title, $duration] = array_pad(explode("\t", trim(strtok($info, "\r\n") ?: ''), 2), 2, '');
         $title = trim($title) !== '' ? trim($title) : $videoId;
 
         if ($speed != 1.0 || $pitch !== 0) {
@@ -264,7 +275,7 @@ class YoutubeMp3Service
     {
         $tmp = dirname($file) . '/enhanced.mp3';
         $this->exec([
-            $this->ffmpeg ?: 'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y',
+            $this->ffmpeg, '-hide_banner', '-loglevel', 'error', '-y',
             '-i', $file,
             '-map', '0:a', '-map_metadata', '0',
             '-af', self::filterChain($speed, $pitch),
@@ -359,48 +370,20 @@ class YoutubeMp3Service
         return $this->exec(array_merge([$this->ytdlp, '--ignore-config', '--no-cache-dir'], $args), $timeout, 'yt-dlp');
     }
 
-    /** Jalankan proses tanpa shell, dengan timeout. Balas stdout. */
+    /** Jalankan proses (lewat ProcessRunner). Balas stdout, lempar pesan ramah kalau gagal. */
     private function exec(array $cmd, int $timeout, string $bin): string
     {
-        $proc = @proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
-        if (!is_resource($proc)) {
-            throw new RuntimeException($bin . ' tidak bisa dijalankan — install yt-dlp & ffmpeg di server (lihat README)');
+        $r = ProcessRunner::run($cmd, $timeout, $bin);
+        if ($r['code'] !== 0) {
+            throw new RuntimeException(self::friendlyError($r['err']));
         }
-        stream_set_blocking($pipes[1], false);
-        stream_set_blocking($pipes[2], false);
+        return $r['out'];
+    }
 
-        $out = $err = '';
-        $deadline = time() + $timeout;
-        while (true) {
-            $out .= (string)stream_get_contents($pipes[1]);
-            $err .= (string)stream_get_contents($pipes[2]);
-            $status = proc_get_status($proc);
-            if (!$status['running']) {
-                break;
-            }
-            if (time() > $deadline) {
-                proc_terminate($proc, 9);
-                fclose($pipes[1]);
-                fclose($pipes[2]);
-                proc_close($proc);
-                throw new RuntimeException('Timeout — video terlalu lama diproses');
-            }
-            usleep(100_000);
-        }
-        $out .= (string)stream_get_contents($pipes[1]);
-        $err .= (string)stream_get_contents($pipes[2]);
-        fclose($pipes[1]);
-        fclose($pipes[2]);
-        proc_close($proc);
-
-        $code = $status['exitcode'];
-        if ($code === 127) {
-            throw new RuntimeException($bin . ' tidak ditemukan di server — install yt-dlp & ffmpeg (lihat README)');
-        }
-        if ($code !== 0) {
-            throw new RuntimeException(self::friendlyError($err));
-        }
-        return $out;
+    /** Path untuk --print-to-file (dievaluasi sebagai output template → escape %) */
+    private static function outtmplPath(string $path): string
+    {
+        return str_replace('%', '%%', $path);
     }
 
     private static function friendlyError(string $stderr): string
@@ -411,8 +394,9 @@ class YoutubeMp3Service
             'Sign in to confirm your age'  => 'Video dibatasi umur (perlu login)',
             'members-only'                 => 'Video khusus member',
             'not available in your country'=> 'Video diblokir di negara server',
-            'ffprobe and ffmpeg not found' => 'ffmpeg belum terinstall di server',
-            'ffmpeg not found'             => 'ffmpeg belum terinstall di server',
+            'ffprobe and ffmpeg not found' => 'ffmpeg belum terpasang — klik "Install otomatis" di panel Tools',
+            'ffmpeg not found'             => 'ffmpeg belum terpasang — klik "Install otomatis" di panel Tools',
+            'ffprobe not found'            => 'ffprobe belum terpasang — klik "Install otomatis" di panel Tools',
             'Sign in to confirm you'       => 'YouTube minta verifikasi bot — coba lagi nanti / update yt-dlp',
             'HTTP Error 429'               => 'Terlalu banyak request ke YouTube, coba lagi nanti',
         ];

@@ -86,6 +86,15 @@ function showToast(message, type = 'success', duration = 2200) {
       overlay?.classList.remove('show');
     });
 
+    // Dropdown Tools (klik — hover ditangani CSS di desktop)
+    const tools = document.getElementById('navTools');
+    const toolsToggle = tools?.querySelector('.nav-group-toggle');
+    toolsToggle?.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const open = tools.classList.toggle('open');
+      toolsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
     if (profileChip) {
       profileChip.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -126,6 +135,11 @@ function showToast(message, type = 'success', duration = 2200) {
     if (profileChip && !profileChip.contains(e.target)) {
       profileChip.classList.remove('open');
     }
+    const tools = document.getElementById('navTools');
+    if (tools && !tools.contains(e.target)) {
+      tools.classList.remove('open');
+      tools.querySelector('.nav-group-toggle')?.setAttribute('aria-expanded', 'false');
+    }
     if (nav && !nav.contains(e.target) && !toggle?.contains(e.target)) {
       toggle?.classList.remove('open');
       nav.classList.remove('open');
@@ -136,6 +150,7 @@ function showToast(message, type = 'success', duration = 2200) {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     document.getElementById('profileChip')?.classList.remove('open');
+    document.getElementById('navTools')?.classList.remove('open');
     document.getElementById('navToggle')?.classList.remove('open');
     document.getElementById('topNav')?.classList.remove('open');
     document.getElementById('navOverlay')?.classList.remove('show');

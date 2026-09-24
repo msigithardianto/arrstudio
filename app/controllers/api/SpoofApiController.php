@@ -3,6 +3,7 @@
 //
 // POST JSON  {action:"reupload", apiKey, creatorType, creatorId, assetId, name?}
 // POST JSON  {action:"status",   apiKey, operationId}
+// POST JSON  {action:"check",    apiKey, assetId?}   → cek koneksi API key (+ tes download 1 aset)
 // POST form  action=upload, apiKey, creatorType, creatorId, name?, file (multipart)
 //
 // Balasan sukses: {assetId} atau {operationId} (belum selesai → JS panggil "status")
@@ -35,6 +36,13 @@ class SpoofApiController extends ApiController
                         $this->error('operationId tidak valid');
                     }
                     $this->json($service->operation($opId));
+
+                case 'check':
+                    $testId = trim((string)($input['assetId'] ?? ''));
+                    if ($testId !== '' && !preg_match('/^\d{1,20}$/', $testId)) {
+                        $this->error('Asset ID tes tidak valid');
+                    }
+                    $this->json($service->check($testId !== '' ? $testId : null));
 
                 case 'reupload':
                     [$creatorType, $creatorId] = $this->creator($input);

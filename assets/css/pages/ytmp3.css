@@ -17,6 +17,36 @@
 
 .yt-zip { flex: 0 1 auto; padding: 0 20px; }
 
+/* ---------- Tools (yt-dlp + ffmpeg) ---------- */
+.yt-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  border: 1px solid var(--ds-line);
+  border-left: 3px solid var(--ds-line-2);
+  background: var(--ds-surface);
+}
+.yt-tools[data-state="ok"]      { border-left-color: var(--ds-ok); }
+.yt-tools[data-state="missing"] { border-left-color: var(--gold); }
+.yt-tools-status { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 18px; }
+.yt-tools-title { font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ds-text-3); }
+.yt-tool { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ds-text); }
+.yt-tool i { width: 8px; height: 8px; border-radius: 50%; background: var(--ds-text-3); }
+.yt-tool b { font-family: var(--ds-mono); font-size: 11px; font-weight: 500; color: var(--ds-text-3); }
+.yt-tool.ok i   { background: var(--ds-ok); }
+.yt-tool.miss i { background: var(--ds-err); }
+.yt-tool.miss b { color: var(--ds-err); }
+.yt-tools-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.yt-tools-btn { flex: 0 0 auto; height: 34px; padding: 0 14px; font-size: 12px; }
+.yt-tools-msg { flex-basis: 100%; font-size: 13px; color: var(--ds-text-2); }
+.yt-tools-msg:empty { display: none; }
+.yt-tools-msg.err { color: var(--ds-err); }
+.yt-tools-help { flex-basis: 100%; margin-top: 0; }
+
 /* ---------- Audio Enhancement ---------- */
 .yt-enhance { margin-bottom: 24px; }
 .yt-desc { font-size: 14px; line-height: 1.6; color: var(--ds-text-2); max-width: 720px; }
