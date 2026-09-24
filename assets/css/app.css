@@ -530,6 +530,42 @@ body {
   color: #f4f4f6;
 }
 
+/* Tombol ⚡ Convert (guest: tampil sisa kuota) */
+.btn-convert {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: 4px;
+  padding: 3px 10px;
+  border: 1px solid rgba(212, 175, 55, 0.6);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #e8c75a, #b8922c);
+  color: #1a1408;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  cursor: pointer;
+  transition: filter .15s ease, transform .15s ease, box-shadow .15s ease;
+}
+.btn-convert:hover { filter: brightness(1.08); transform: translateY(-1px); }
+.btn-convert:active { transform: translateY(0); }
+.btn-convert.is-stale { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.6); animation: convert-pulse 1.6s ease-out infinite; }
+.btn-convert.is-loading { opacity: .7; pointer-events: none; }
+.btn-convert.is-loading .btn-convert-icon { animation: convert-spin .8s linear infinite; }
+.btn-convert-quota {
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(26, 20, 8, 0.2);
+  font-size: 10px;
+}
+.btn-convert-quota.is-empty { background: #7f1d1d; color: #fecaca; }
+@keyframes convert-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(212, 175, 55, 0.55); }
+  100% { box-shadow: 0 0 0 8px rgba(212, 175, 55, 0); }
+}
+@keyframes convert-spin { to { transform: rotate(360deg); } }
+
 .icon-btn {
   padding: 3px 8px;
   background: transparent;

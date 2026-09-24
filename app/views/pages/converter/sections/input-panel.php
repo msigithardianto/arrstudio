@@ -12,6 +12,11 @@
       <button onclick="loadSample('sidebar')" class="chip">Sidebar</button>
       <button onclick="loadSample('music')" class="chip">Music</button>
       <button onclick="clearInput()" class="chip">Clear</button>
+      <button onclick="runConvert()" class="btn-convert" id="btnConvert" title="Convert ke Lua (Ctrl+Enter)">
+        <span class="btn-convert-icon">⚡</span>
+        <span>Convert</span>
+        <span class="btn-convert-quota" id="convertQuota" title="Sisa kuota gratis" hidden></span>
+      </button>
       </div>
   </div>
 

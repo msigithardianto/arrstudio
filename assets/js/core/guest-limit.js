@@ -4,67 +4,37 @@
 (function () {
   'use strict';
 
-  const MAX_USES = 3;
-  const LS_KEY   = 'arrr_guest_uses';
-  const CK_KEY   = 'arrr_guest_uses_c';
+  // Kuota dihitung di SERVER (ConvertApiController + cookie arrr_guest_uses_c).
+  // Di sini cuma baca cookie itu untuk tampilan, dan sync dari response API.
+  let MAX_USES = window.__guestMax || 3;
+  const CK_KEY = 'arrr_guest_uses_c';
 
-  // ============================================================
-  // Storage helpers
-  // ============================================================
   function getCookie(name) {
     const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
     return m ? decodeURIComponent(m[1]) : null;
   }
-  function setCookie(name, value, days = 365) {
-    const d = new Date();
-    d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
-    document.cookie = `${name}=${encodeURIComponent(value)};expires=${d.toUTCString()};path=/;SameSite=Lax`;
-  }
 
   function getUses() {
-    let ls = 0, ck = 0;
-    try { ls = parseInt(localStorage.getItem(LS_KEY) || '0', 10); } catch {}
-    ck = parseInt(getCookie(CK_KEY) || '0', 10);
-    return Math.max(ls || 0, ck || 0);
+    return Math.max(0, parseInt(getCookie(CK_KEY) || '0', 10) || 0);
   }
 
-  function setUses(n) {
-    try { localStorage.setItem(LS_KEY, String(n)); } catch {}
-    setCookie(CK_KEY, String(n));
-  }
-
-  function resetUses() {
-    try { localStorage.removeItem(LS_KEY); } catch {}
-    setCookie(CK_KEY, '0', -1);
-  }
+  // Bersihkan sisa counter lama (dulu disimpan juga di localStorage)
+  try { localStorage.removeItem('arrr_guest_uses'); } catch {}
 
   // ============================================================
   // Public API
   // ============================================================
   window.GuestLimit = {
-    MAX: MAX_USES,
+    get MAX() { return MAX_USES; },
     getUses,
     getRemaining: () => Math.max(0, MAX_USES - getUses()),
-    isExceeded: () => getUses() >= MAX_USES,
-    reset: resetUses,
+    isExceeded: () => !window.__isLoggedIn && getUses() >= MAX_USES,
 
-    /**
-     * Consume 1 kuota. Return:
-     *  { ok: true, remaining }  → boleh lanjut
-     *  { ok: false, reason }    → harus login
-     */
-    consume() {
-      if (window.__isLoggedIn) return { ok: true, remaining: Infinity };
-
-      if (getUses() >= MAX_USES) {
-        return { ok: false, reason: 'limit' };
-      }
-
-      const next = getUses() + 1;
-      setUses(next);
-
-      return { ok: true, remaining: MAX_USES - next };
-    }
+    /** Sinkron dari response API ({uses, remaining, max}) */
+    sync(info) {
+      if (info && Number.isFinite(info.max)) MAX_USES = info.max;
+      window.__updateGuestBadge?.();
+    },
   };
 
   // ============================================================
