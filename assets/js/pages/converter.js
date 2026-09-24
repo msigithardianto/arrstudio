@@ -23,7 +23,8 @@ const LOGIC_FILES = {
   client: { path: 'StarterPlayerScripts › ArrUIClient (LocalScript)',       file: 'ArrUIClient.client.lua' },
 };
 let lastNodes = [];
-let previewNodes = null;   // node final dari server (setelah ShapeFixer) → preview Roblox
+let previewNodes = null;
+let lastUi = null;         // nama ScreenGui/container dari server   // node final dari server (setelah ShapeFixer) → preview Roblox
 let viewMode = 'html';
 let zoom = 1;
 let autoFit = true;
@@ -314,6 +315,7 @@ async function convert(options = {}) {
 
     renderTab();
     previewNodes = gen.nodes || null;
+    lastUi = gen.ui || null;
     renderRobloxPreview(previewNodes || lastNodes);
     if (badgeNodes) badgeNodes.textContent = lastNodes.length + ' nodes';
 
@@ -1032,10 +1034,14 @@ function copyCurrent() {
 }
 
 function downloadFile(kind) {
-  if (!lastNodes.length) return;
+  if (!lastNodes.length) {
+    showToast('Klik ⚡ Convert dulu, baru bisa download', 'warning');
+    $('btnConvert')?.classList.add('is-stale');
+    return;
+  }
   let content = '', filename = '', mime = 'text/plain';
   if (kind === 'lua')       { content = cache.fullscript; filename = 'GeneratedUI_Full.lua'; }
-  if (kind === 'rbxmx')     { content = cache.rbxmx;      filename = 'GeneratedUIPack.rbxmx'; mime = 'application/xml'; }
+  if (kind === 'rbxmx')     { content = cache.rbxmx;      filename = (lastUi?.name || 'ArrUI') + '_ArrUIPack.rbxmx'; mime = 'application/xml'; }
   if (kind === 'plugin')    { content = cache.plugin;     filename = 'ArrStudioImporter.lua'; }
   if (kind === 'billboard') { content = cache.billboard;  filename = 'BillboardNametag.lua'; }
   if (LOGIC_FILES[kind])    { content = cache[kind];      filename = LOGIC_FILES[kind].file; }
@@ -1048,6 +1054,10 @@ function downloadFile(kind) {
   a.download = filename;
   a.click();
   URL.revokeObjectURL(url);
+
+  if (kind === 'rbxmx') {
+    showToast('Studio: klik kanan Workspace → Insert from File → lalu plugin 📦 Install Pack', 'success', 6000);
+  }
 
   const luaStatus = ref.luaStatus;
   if (luaStatus) {

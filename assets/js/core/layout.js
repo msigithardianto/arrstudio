@@ -39,7 +39,7 @@ function copyPluginPath(elementId) {
 /* ============================================================
    TOAST — global
    ============================================================ */
-function showToast(message, type = 'success') {
+function showToast(message, type = 'success', duration = 2200) {
   const toast = document.getElementById('toast');
   const icon = document.getElementById('toastIcon');
   const text = document.getElementById('toastText');
@@ -53,7 +53,7 @@ function showToast(message, type = 'success') {
   clearTimeout(window._toastTimer);
   window._toastTimer = setTimeout(() => {
     toast.classList.remove('show');
-  }, 2200);
+  }, duration);
 }
 
 /* ============================================================

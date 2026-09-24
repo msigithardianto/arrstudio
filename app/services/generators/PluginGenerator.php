@@ -10,13 +10,15 @@ class PluginGenerator {
         return <<<'LUA'
 --!strict
 -- ============================================================
---  ARRR Studio Importer v4.0
---  Auto-detect Billboard & auto-attach ke player
+--  ARRR Studio Importer v5.0
+--  • Build: paste Lua (Full Lua / Billboard) → UI langsung jadi
+--  • Install Pack: .rbxmx "ArrUIPack" → GUI + GameConfig + Server + Client
+--    otomatis dipindah ke service yang benar
 -- ============================================================
 
 local PLUGIN_NAME  = "ARRR Studio Importer"
 local TOOLBAR_NAME = "ARRR Studio"
-local VERSION      = "4.0.0"
+local VERSION      = "5.0.0"
 
 if not plugin then
 	warn("[ARRR] Harus dijalankan di Roblox Studio.")
@@ -26,6 +28,8 @@ end
 local Players    = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Workspace  = game:GetService("Workspace")
+local ChangeHistoryService = game:GetService("ChangeHistoryService")
+local Selection  = game:GetService("Selection")
 
 local toolbar = plugin:CreateToolbar(TOOLBAR_NAME)
 local mainButton = toolbar:CreateButton(
@@ -352,7 +356,7 @@ bottomRow.Parent = root
 
 local status = create("TextLabel", {
 	Name = "Status",
-	Size = UDim2.new(1, -240, 1, 0),
+	Size = UDim2.new(1, -372, 1, 0),
 	BackgroundTransparency = 1,
 	Text = "Ready.",
 	TextColor3 = TEXT_DIM,
@@ -363,6 +367,19 @@ local status = create("TextLabel", {
 	TextTruncate = Enum.TextTruncate.AtEnd,
 	Parent = bottomRow,
 })
+
+local installBtn = create("TextButton", {
+	Name = "InstallPack",
+	Size = UDim2.new(0, 124, 1, 0),
+	Position = UDim2.new(1, -360, 0, 0),
+	BackgroundColor3 = Color3.fromRGB(34, 94, 58),
+	TextColor3 = Color3.fromRGB(230, 255, 238),
+	Text = "📦 Install Pack",
+	TextSize = 12,
+	Font = Enum.Font.GothamBold,
+	AutoButtonColor = false,
+}, { corner(8), stroke(Color3.fromRGB(74, 222, 128), 1, 0.4) })
+installBtn.Parent = bottomRow
 
 local clearBtn = create("TextButton", {
 	Name = "Clear",
@@ -404,6 +421,7 @@ end
 
 addHover(buildBtn, GOLD, GOLD_BRIGHT)
 addHover(clearBtn, EDGE, Color3.fromRGB(52, 52, 62))
+addHover(installBtn, Color3.fromRGB(34, 94, 58), Color3.fromRGB(40, 120, 70))
 
 -- ============================================================
 --  STATUS HELPER
@@ -622,8 +640,72 @@ local function buildFromRbxmx(source)
 		setStatus("❌ Bukan XML valid.", RED)
 		return
 	end
-	setStatus("⚠️ RBXMX: File → Import → pilih .rbxmx", YELLOW)
+	setStatus("ℹ️ RBXMX: klik kanan Workspace → Insert from File → pilih .rbxmx, lalu klik 📦 Install Pack", YELLOW)
 end
+
+-- ============================================================
+--  INSTALL PACK (.rbxmx "ArrUIPack")
+--  Struktur pack: StarterGui / ReplicatedStorage / ServerScriptService /
+--  StarterPlayerScripts → dipindah ke service aslinya (replace kalau sudah ada)
+-- ============================================================
+local PACK_TARGETS = {
+	StarterGui           = function() return game:GetService("StarterGui") end,
+	ReplicatedStorage    = function() return game:GetService("ReplicatedStorage") end,
+	ServerScriptService  = function() return game:GetService("ServerScriptService") end,
+	StarterPlayerScripts = function() return game:GetService("StarterPlayer"):WaitForChild("StarterPlayerScripts") end,
+}
+
+local function findPack()
+	for _, sel in ipairs(Selection:Get()) do
+		if sel.Name == "ArrUIPack" then return sel end
+		local inside = sel:FindFirstChild("ArrUIPack", true)
+		if inside then return inside end
+	end
+	return Workspace:FindFirstChild("ArrUIPack", true)
+		or game:GetService("ServerStorage"):FindFirstChild("ArrUIPack", true)
+		or game:GetService("ReplicatedStorage"):FindFirstChild("ArrUIPack", true)
+end
+
+-- Folder (mis. ArrUI) di-merge; Instance lain di-replace
+local function moveInto(item, target)
+	local existing = target:FindFirstChild(item.Name)
+	if existing and item:IsA("Folder") and existing:IsA("Folder") then
+		for _, child in ipairs(item:GetChildren()) do moveInto(child, existing) end
+		item:Destroy()
+		return
+	end
+	if existing then existing:Destroy() end
+	item.Parent = target
+end
+
+local function installPack()
+	local pack = findPack()
+	if not pack then
+		setStatus("❌ ArrUIPack tidak ditemukan. Klik kanan Workspace → Insert from File → pilih .rbxmx", RED)
+		return
+	end
+
+	local recording = ChangeHistoryService:TryBeginRecording("ArrUI Install Pack")
+	local installed = {}
+	for _, group in ipairs(pack:GetChildren()) do
+		local getTarget = PACK_TARGETS[group.Name]
+		if getTarget then
+			local target = getTarget()
+			for _, item in ipairs(group:GetChildren()) do
+				moveInto(item, target)
+				table.insert(installed, target.Name .. "/" .. item.Name)
+			end
+		end
+	end
+	pack:Destroy()
+	if recording then ChangeHistoryService:FinishRecording(recording, Enum.FinishRecordingOperation.Commit) end
+
+	print("[ARRR] Installed:\n  " .. table.concat(installed, "\n  "))
+	setStatus("✓ Terpasang " .. #installed .. " item. DataStore: Game Settings → Security → API Services.", GREEN)
+	Selection:Set({ game:GetService("StarterGui") })
+end
+
+installBtn.MouseButton1Click:Connect(installPack)
 
 buildBtn.MouseButton1Click:Connect(function()
 	if currentMode == "lua" then

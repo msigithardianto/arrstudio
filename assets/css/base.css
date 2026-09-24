@@ -625,3 +625,7 @@
   .guest-gate-title { font-size: 18px; }
   .guest-gate-icon { width: 54px; height: 54px; font-size: 26px; }
 }
+
+/* Daftar tujuan install di modal plugin */
+.plugin-install-list { margin: 8px 0 6px; padding-left: 18px; line-height: 1.7; }
+.plugin-install-list code { font-size: 11px; }

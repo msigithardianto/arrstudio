@@ -263,6 +263,54 @@
   box-shadow: 0 0 20px rgba(212, 175, 55, 0.4);
 }
 
+/* --- Tombol export berlabel (converter) --- */
+.btn.btn-action {
+  height: 36px;
+  padding: 0 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 9px;
+  background: rgba(192, 192, 200, 0.06);
+  border: 1px solid rgba(192, 192, 200, 0.12);
+  color: #d4d4dc;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn.btn-action:hover {
+  background: rgba(212, 175, 55, 0.12);
+  border-color: rgba(212, 175, 55, 0.35);
+  color: #f4d03f;
+  transform: translateY(-1px);
+}
+.btn.btn-action.btn-export {
+  background: linear-gradient(135deg, #d4af37, #b8922c);
+  border-color: rgba(244, 208, 63, 0.6);
+  color: #14100a;
+}
+.btn.btn-action.btn-export:hover {
+  background: linear-gradient(135deg, #f4d03f, #d4af37);
+  color: #0a0a0d;
+  box-shadow: 0 0 18px rgba(212, 175, 55, 0.35);
+}
+.btn-action-icon { font-size: 13px; }
+.status-pill { white-space: nowrap; }
+/* Layar sedang: tombol sekunder cukup ikon, status ringkas */
+@media (max-width: 1560px) {
+  .btn.btn-action:not(.btn-export) .btn-action-label { display: none; }
+  .btn.btn-action:not(.btn-export) { padding: 0 10px; }
+  .status-pill.warn { display: none; }
+}
+@media (max-width: 1280px) {
+  .status-group, .status-group + .top-divider { display: none; }
+  .btn.btn-export .btn-action-label { display: none; }
+  .btn.btn-export { padding: 0 11px; }
+}
+
 /* --- Profile chip --- */
 .profile-chip {
   position: relative;

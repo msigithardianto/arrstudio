@@ -10,7 +10,7 @@ class RbxmxGenerator {
      * $ui: ['name' => nama container, 'gui' => nama ScreenGui, 'singleRoot' => bool]
      * singleRoot = root UI sendiri jadi container (tanpa Frame "Canvas" tambahan)
      */
-    public static function generate($nodes, $W = 800, $H = 600, array $ui = []) {
+    public static function generate($nodes, $W = 800, $H = 600, array $ui = [], array $logic = []) {
         $ui += ['name' => 'Canvas', 'gui' => 'GeneratedUI', 'singleRoot' => false];
         $refCounter = 0;
         $newRef = function() use (&$refCounter) {
@@ -23,10 +23,16 @@ class RbxmxGenerator {
         $out[] = '<?xml version="1.0" encoding="utf-8"?>';
         $out[] = '<roblox xmlns:xmime="http://www.w3.org/2005/05/xmlmime" version="4">';
 
+        // ArrUIPack: folder per service → plugin "📦 Install Pack" memindahkan otomatis
         $out[] = '  <Item class="Folder" referent="' . $newRef() . '">';
         $out[] = '    <Properties>';
-        $out[] = '      <string name="Name">GeneratedUIPack</string>';
+        $out[] = '      <string name="Name">ArrUIPack</string>';
         $out[] = '    </Properties>';
+        $out[] = self::stringValue($newRef, 'BacaDulu',
+            "Pakai plugin ARRR Studio → klik 📦 Install Pack. Manual: pindahkan isi tiap folder ke service dengan nama yang sama " .
+            "(StarterGui, ReplicatedStorage, ServerScriptService, StarterPlayer > StarterPlayerScripts).");
+        $out[] = '  <Item class="Folder" referent="' . $newRef() . '">';
+        $out[] = '    <Properties><string name="Name">StarterGui</string></Properties>';
 
         $out[] = '    <Item class="ScreenGui" referent="' . $newRef() . '">';
         $out[] = '      <Properties>';
@@ -75,7 +81,8 @@ class RbxmxGenerator {
         $writeNode = function($n, $indent, bool $isContainer = false) use (&$writeNode, &$byParent, &$out, &$newRef) {
             $pad = str_repeat('  ', $indent);
             $st  = NodeStyle::resolve($n);
-            $p   = fn(string $line) => $out[] = "{$pad}    {$line}";
+            // Closure biasa (bukan arrow fn): arrow fn menangkap $out by value → baris hilang
+            $p   = function (string $line) use (&$out, $pad) { $out[] = "{$pad}    {$line}"; };
 
             $out[] = "{$pad}<Item class=\"{$n['robloxClass']}\" referent=\"" . $newRef() . '">';
             $out[] = "{$pad}  <Properties>";
@@ -184,7 +191,20 @@ class RbxmxGenerator {
         }
 
         $out[] = '    </Item>';
-        $out[] = '  </Item>';
+        $out[] = '  </Item>';   // /StarterGui
+
+        // Game Logic (kalau ada)
+        if (!empty($logic['module'])) {
+            $out[] = self::serviceFolder($newRef, 'ReplicatedStorage',
+                '<Item class="Folder" referent="' . $newRef() . '"><Properties><string name="Name">ArrUI</string></Properties>'
+                . self::script($newRef, 'ModuleScript', 'GameConfig', $logic['module']) . '</Item>');
+            $out[] = self::serviceFolder($newRef, 'ServerScriptService',
+                self::script($newRef, 'Script', 'ArrUIServer', $logic['server']));
+            $out[] = self::serviceFolder($newRef, 'StarterPlayerScripts',
+                self::script($newRef, 'LocalScript', 'ArrUIClient', $logic['client']));
+        }
+
+        $out[] = '  </Item>';   // /ArrUIPack
         $out[] = '</roblox>';
 
         return implode("\n", $out);
@@ -196,5 +216,23 @@ class RbxmxGenerator {
 
     private static function x($s): string {
         return htmlspecialchars((string)$s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+    }
+
+    private static function script(callable $newRef, string $class, string $name, string $source): string {
+        return '<Item class="' . $class . '" referent="' . $newRef() . '"><Properties>'
+            . '<string name="Name">' . self::x($name) . '</string>'
+            . '<ProtectedString name="Source"><![CDATA[' . str_replace(']]>', ']]]]><![CDATA[>', $source) . ']]></ProtectedString>'
+            . '</Properties></Item>';
+    }
+
+    private static function serviceFolder(callable $newRef, string $name, string $inner): string {
+        return '  <Item class="Folder" referent="' . $newRef() . '"><Properties><string name="Name">' . $name . '</string></Properties>'
+            . "\n    " . $inner . "\n  </Item>";
+    }
+
+    private static function stringValue(callable $newRef, string $name, string $value): string {
+        return '  <Item class="StringValue" referent="' . $newRef() . '"><Properties>'
+            . '<string name="Name">' . self::x($name) . '</string><string name="Value">' . self::x($value) . '</string>'
+            . '</Properties></Item>';
     }
 }
