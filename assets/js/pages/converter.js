@@ -182,14 +182,14 @@ async function runConvert() {
 // Output belum sesuai dengan isi editor → minta user klik Convert
 function markOutputStale() {
   const luaStatus = ref.luaStatus;
-  if (luaStatus) luaStatus.textContent = 'Belum di-convert — klik ⚡ Convert';
+  if (luaStatus) luaStatus.textContent = 'Belum di-convert — klik Convert';
   $('btnConvert')?.classList.add('is-stale');
 
   const outputBody = ref.outputBody;
   const hasOutput = Object.values(cache).some(Boolean);
   if (outputBody && !hasOutput) {
     const left = window.GuestLimit ? window.GuestLimit.getRemaining() : 0;
-    outputBody.innerHTML = `<span class="tok-cmt">-- Preview HTML sudah tampil.\n-- Klik ⚡ Convert (atau Ctrl+Enter) untuk generate Lua.\n-- Sisa kuota gratis: ${left}/${window.GuestLimit?.MAX ?? 3}</span>`;
+    outputBody.innerHTML = `<span class="tok-cmt">-- Preview HTML sudah tampil.\n-- Klik Convert (atau Ctrl+Enter) untuk generate Lua.\n-- Sisa kuota gratis: ${left}/${window.GuestLimit?.MAX ?? 3}</span>`;
   }
 }
 
@@ -1035,7 +1035,7 @@ function copyCurrent() {
 
 function downloadFile(kind) {
   if (!lastNodes.length) {
-    showToast('Klik ⚡ Convert dulu, baru bisa download', 'warning');
+    showToast('Klik Convert dulu, baru bisa download', 'warning');
     $('btnConvert')?.classList.add('is-stale');
     return;
   }
@@ -1056,7 +1056,7 @@ function downloadFile(kind) {
   URL.revokeObjectURL(url);
 
   if (kind === 'rbxmx') {
-    showToast('Studio: klik kanan Workspace → Insert from File → lalu plugin 📦 Install Pack', 'success', 6000);
+    showToast('Studio: klik kanan Workspace → Insert from File → lalu plugin → Install Pack', 'success', 6000);
   }
 
   const luaStatus = ref.luaStatus;

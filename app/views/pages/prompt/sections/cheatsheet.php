@@ -4,7 +4,7 @@
 <div class="pg-panel" data-panel="cheatsheet">
   <div class="pg-section">
     <div class="pg-section-title">
-      <span class="num">📌</span>
+      <span class="num">01</span>
       Cheat Sheet HTML Converter
     </div>
     <div class="pg-section-desc">
@@ -14,7 +14,7 @@
     <div class="pg-cheat-grid">
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">✅</span> Tag Didukung (semua tag)
+          Tag Didukung (semua tag)
         </div>
         <div class="pg-cheat-list">
           <span class="pg-cheat-tag">div / section / article</span>
@@ -34,7 +34,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head" style="color:#ef4444;">
-          <span class="pg-cheat-icon" style="background:rgba(239,68,68,0.15);">🚫</span> Tag / Fitur Dilewati
+          Tag / Fitur Dilewati
         </div>
         <div class="pg-cheat-list">
           <span class="pg-cheat-tag bad">svg (jadi Frame kosong)</span>
@@ -47,7 +47,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">✅</span> CSS Didukung
+          CSS Didukung
         </div>
         <div class="pg-cheat-list">
           <span class="pg-cheat-tag">&lt;style&gt; + class</span>
@@ -70,7 +70,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head" style="color:#ef4444;">
-          <span class="pg-cheat-icon" style="background:rgba(239,68,68,0.15);">🚫</span> CSS Unsupported
+          CSS Unsupported
         </div>
         <div class="pg-cheat-list">
           <span class="pg-cheat-tag bad">box-shadow</span>
@@ -87,7 +87,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">🎯</span> Interaktif
+          Interaktif
         </div>
         <div class="pg-cheat-list">
           <span class="pg-cheat-tag">id="shop-toggle"</span>
@@ -107,7 +107,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">🎨</span> Warna Gold Theme
+          Warna Gold Theme
         </div>
         <div class="pg-cheat-list">
           <span class="pg-cheat-tag">#0a0a0d (bg)</span>
@@ -124,7 +124,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">😀</span> Emoji Icon
+          Emoji Icon
         </div>
         <div class="pg-cheat-list">
           <span class="pg-cheat-tag">⚔️ sword</span>
@@ -142,7 +142,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">📐</span> Ukuran Desain
+          Ukuran Desain
         </div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           Area desain <code>800 × 600 px</code> (preview).<br>
@@ -153,7 +153,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">👑</span> Billboard Nametag
+          Billboard Nametag
         </div>
         <div class="pg-cheat-list">
           <span class="pg-cheat-tag">BillboardGui</span>

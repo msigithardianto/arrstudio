@@ -4,7 +4,7 @@
 <div class="pg-panel" data-panel="rules">
   <div class="pg-section">
     <div class="pg-section-title">
-      <span class="num">!</span>
+      <span class="num">01</span>
       Aturan Converter ARRR Studio v5
     </div>
     <div class="pg-section-desc">
@@ -13,13 +13,13 @@
     </div>
 
     <div class="pg-section-title" style="margin-top:24px;">
-      <span class="num">✅</span>
+      <span class="num">02</span>
       Boleh &amp; Disarankan
     </div>
 
     <div class="pg-cheat-grid">
       <div class="pg-cheat-card">
-        <div class="pg-cheat-head"><span class="pg-cheat-icon">📐</span> Layout</div>
+        <div class="pg-cheat-head">Layout</div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           <code>&lt;style&gt;</code> + class, <code>display:flex</code>, <code>grid</code>, margin, padding, <code>%</code>, <code>em</code><br>
           Satu elemen root pembungkus UI<br>
@@ -28,7 +28,7 @@
       </div>
 
       <div class="pg-cheat-card">
-        <div class="pg-cheat-head"><span class="pg-cheat-icon">🎨</span> Visual</div>
+        <div class="pg-cheat-head">Visual</div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           Warna solid &amp; <code>linear-gradient</code><br>
           <code>border</code> (boleh per sisi), <code>border-radius</code> (boleh sebagian, mis. atas saja)<br>
@@ -37,7 +37,7 @@
       </div>
 
       <div class="pg-cheat-card">
-        <div class="pg-cheat-head"><span class="pg-cheat-icon">🔤</span> Teks</div>
+        <div class="pg-cheat-head">Teks</div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           <code>&lt;b&gt;</code>, <code>&lt;i&gt;</code>, <code>&lt;span style="color"&gt;</code>, <code>&lt;br&gt;</code> → RichText<br>
           Font: Inter, Poppins, Montserrat, Roboto, Arial, Georgia, monospace<br>
@@ -46,7 +46,7 @@
       </div>
 
       <div class="pg-cheat-card">
-        <div class="pg-cheat-head"><span class="pg-cheat-icon">🧠</span> Game Logic</div>
+        <div class="pg-cheat-head">Game Logic</div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           <code>&lt;button&gt;</code> dengan teks jelas: Buy, Sell, Equip, Claim, Upgrade, Redeem, Spin, Craft, Accept, Decline, Save<br>
           Harga sebagai teks: <code>💎 2,500</code>, <code>🪙 900</code>, <code>$0.99</code><br>
@@ -55,7 +55,7 @@
       </div>
 
       <div class="pg-cheat-card">
-        <div class="pg-cheat-head"><span class="pg-cheat-icon">🃏</span> Card Item</div>
+        <div class="pg-cheat-head">Card Item</div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           Satu container per item: ikon, <strong>nama</strong>, rarity (Common/Rare/Epic/Legendary), <strong>harga</strong><br>
           Tombol Buy di dalam card (opsional — card sendiri bisa diklik)
@@ -63,7 +63,7 @@
       </div>
 
       <div class="pg-cheat-card">
-        <div class="pg-cheat-head"><span class="pg-cheat-icon">🪟</span> Panel &amp; Interaksi</div>
+        <div class="pg-cheat-head">Panel &amp; Interaksi</div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           Panel tersembunyi: <code>display:none</code> (inline / class) + <code>id="shop-panel"</code><br>
           Tombol <code>id="shop-toggle"</code> / <code>id="shop-close"</code><br>
@@ -75,14 +75,14 @@
     </div>
 
     <div class="pg-section-title" style="margin-top:32px;">
-      <span class="num">🚫</span>
+      <span class="num">03</span>
       Hindari (tidak ada di Roblox)
     </div>
 
     <div class="pg-cheat-grid">
       <div class="pg-cheat-card">
         <div class="pg-cheat-head" style="color:#ef4444;">
-          <span class="pg-cheat-icon" style="background:rgba(239,68,68,0.15);">🚫</span> Efek
+          Efek
         </div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           <code>box-shadow</code>, <code>text-shadow</code>, <code>filter</code>, <code>backdrop-filter</code>,
@@ -92,7 +92,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head" style="color:#ef4444;">
-          <span class="pg-cheat-icon" style="background:rgba(239,68,68,0.15);">🚫</span> Bentuk
+          Bentuk
         </div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           <code>radial-gradient</code> (jadi warna rata-rata), radius elips pada kotak pipih,
@@ -102,7 +102,7 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head" style="color:#ef4444;">
-          <span class="pg-cheat-icon" style="background:rgba(239,68,68,0.15);">🚫</span> Aset
+          Aset
         </div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
           Gambar URL web (Roblox butuh <code>rbxassetid://</code>) — pakai emoji / bentuk CSS<br>
@@ -113,13 +113,13 @@
 
     <div class="pg-section" style="margin-top:32px;">
       <div class="pg-section-title">
-        <span class="num">⚠️</span>
+        <span class="num">04</span>
         Contoh: Kurang vs Bagus
       </div>
 
       <div class="pg-compare">
         <div class="pg-compare-card bad">
-          <div class="pg-compare-head">❌ Kurang (logic tidak terdeteksi, efek hilang)</div>
+          <div class="pg-compare-head">Kurang (logic tidak terdeteksi, efek hilang)</div>
           <div class="pg-compare-body">&lt;div class="card" style="box-shadow:0 8px 24px #0008"&gt;
   &lt;img src="https://.../sword.png"&gt;
   &lt;div&gt;Sword&lt;/div&gt;
@@ -127,7 +127,7 @@
 &lt;/div&gt;</div>
         </div>
         <div class="pg-compare-card good">
-          <div class="pg-compare-head">✅ Bagus (identik + Game Logic otomatis)</div>
+          <div class="pg-compare-head">Bagus (identik + Game Logic otomatis)</div>
           <div class="pg-compare-body">&lt;div class="card"&gt;
   &lt;div class="icon"&gt;⚔️&lt;/div&gt;
   &lt;div class="name"&gt;Dragon Sword&lt;/div&gt;

@@ -36,7 +36,6 @@
   </table>
 
   <div class="callout info">
-    <span class="callout-icon">📐</span>
     <div>
       UI dengan satu root: root itu sendiri jadi container di tengah layar (tanpa Frame "Canvas" tambahan),
       di-scale otomatis sesuai layar. ScreenGui dinamai sesuai UI, mis. <code>ItemShopGui</code>.

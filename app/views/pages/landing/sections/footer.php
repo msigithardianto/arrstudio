@@ -1,28 +1,34 @@
 <?php
 // app/views/pages/landing/sections/footer.php — footer landing
 ?>
-<!-- ═══════════ FOOTER ═══════════ -->
-<footer class="rbx-footer">
-  <div class="rbx-footer-inner">
-    <div class="rbx-footer-brand">
-      <span class="rbx-logo-mark rbx-logo-mark--sm">A</span>
-      <div>
-        <div class="rbx-footer-name">ARRR <strong>Studio</strong></div>
-        <div class="rbx-footer-tag">Web-to-Roblox UI Pipeline</div>
-      </div>
+<footer class="lx-footer">
+  <div class="lx-footer-top">
+    <div class="lx-footer-brand">
+      <a href="<?= url('landing') ?>" class="lx-logo">
+        <img src="<?= asset('img/logo.png') ?>" alt="">
+        <span>ARRR <b>STUDIO</b></span>
+      </a>
+      <p>HTML → Roblox GUI converter dengan Game Logic otomatis.</p>
     </div>
-
-    <div class="rbx-footer-links">
+    <div class="lx-footer-col">
+      <h4>Produk</h4>
       <a href="<?= url('converter') ?>">Converter</a>
       <a href="<?= url('library') ?>">Library</a>
-      <a href="<?= url('docs') ?>">Docs</a>
       <a href="<?= url('prompt') ?>">Prompt</a>
     </div>
+    <div class="lx-footer-col">
+      <h4>Belajar</h4>
+      <a href="<?= url('docs') ?>">Dokumentasi</a>
+      <a href="<?= url('docs') ?>">Plugin &amp; Install Pack</a>
+      <a href="<?= url('docs') ?>">API</a>
+    </div>
+    <div class="lx-footer-col">
+      <h4>Tampilan</h4>
+      <button type="button" class="lx-link" data-theme-open>Ganti tema <span>→</span></button>
+    </div>
   </div>
-
-  <div class="rbx-footer-bottom">
+  <div class="lx-footer-bottom">
     <span>© <?= date('Y') ?> ARRR Studio</span>
-    <span class="rbx-footer-sep">·</span>
-    <span>Made for Roblox developers</span>
+    <span>Dibuat untuk developer Roblox</span>
   </div>
 </footer>

@@ -1,113 +1,58 @@
 <?php
-// app/views/pages/landing/sections/hero.php — hero + preview
+// app/views/pages/landing/sections/hero.php — hero sinematik layar penuh + mockup parallax
 ?>
-<!-- ═══════════ HERO ═══════════ -->
-<section class="rbx-hero">
-  <div class="rbx-hero-grid">
-
-    <div class="rbx-hero-content">
-      <span class="rbx-badge">
-        <span class="rbx-badge-dot"></span>
-        v3.5 · Baru Rilis
-      </span>
-
-      <h1 class="rbx-title">
-        Convert <span class="rbx-title-hl">HTML</span> ke Roblox UI dalam hitungan detik.
-      </h1>
-
-      <p class="rbx-subtitle">
-        Live preview, multi-format export, dan auto Luau handler.
-        Bangun UI Roblox dengan workflow web yang sudah kamu kenal.
-      </p>
-
-      <div class="rbx-hero-actions">
-        <a href="<?= url('converter') ?>" class="rbx-btn rbx-btn--primary rbx-btn--lg">
-          Mulai Convert
-          <svg viewBox="0 0 16 16" fill="none" width="16" height="16">
-            <path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-        </a>
-        <a href="<?= url('docs') ?>" class="rbx-btn rbx-btn--ghost rbx-btn--lg">
-          Lihat Docs
-        </a>
-      </div>
-
-      <div class="rbx-hero-meta">
-        <span class="rbx-meta-item">
-          <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
-            <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Berjalan di browser
-        </span>
-        <span class="rbx-meta-item">
-          <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
-            <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          4 format export
-        </span>
-        <span class="rbx-meta-item">
-          <svg viewBox="0 0 16 16" fill="none" width="14" height="14">
-            <path d="M13.333 4L6 11.333 2.667 8" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Preview real-time
-        </span>
-      </div>
-    </div>
-
-    <!-- Preview Card -->
-    <div class="rbx-hero-preview">
-      <div class="rbx-preview">
-        <div class="rbx-preview-head">
-          <div class="rbx-preview-dots">
-            <span></span><span></span><span></span>
-          </div>
-          <div class="rbx-preview-tabs">
-            <button class="rbx-preview-tab active" data-tab="html">index.html</button>
-            <button class="rbx-preview-tab" data-tab="rbx">Output.rbxmx</button>
-          </div>
-          <span class="rbx-preview-live">
-            <span class="rbx-preview-live-dot"></span>
-            Live
-          </span>
-        </div>
-
-        <div class="rbx-preview-body" data-pane="html">
-          <pre class="rbx-code">&lt;div class="inventory-card"&gt;
-&lt;h1&gt;Player Inventory&lt;/h1&gt;
-&lt;button class="btn-equip"&gt;
-  Equip Item
-&lt;/button&gt;
-&lt;/div&gt;</pre>
-        </div>
-
-        <div class="rbx-preview-body rbx-hidden" data-pane="rbx">
-          <div class="rbx-tree">
-            <div class="rbx-tree-row rbx-tree-l0">ScreenGui</div>
-            <div class="rbx-tree-row rbx-tree-l1">Frame</div>
-            <div class="rbx-tree-row rbx-tree-l2">TextLabel</div>
-            <div class="rbx-tree-row rbx-tree-l2">TextButton</div>
-            <div class="rbx-tree-row rbx-tree-l1">UICorner</div>
-          </div>
-        </div>
-
-        <div class="rbx-preview-foot">
-          <div class="rbx-preview-stats">
-            <div class="rbx-preview-stat">
-              <span class="rbx-preview-stat-num">4</span>
-              <span class="rbx-preview-stat-lbl">Formats</span>
-            </div>
-            <div class="rbx-preview-stat">
-              <span class="rbx-preview-stat-num">12</span>
-              <span class="rbx-preview-stat-lbl">Nodes</span>
-            </div>
-            <div class="rbx-preview-stat">
-              <span class="rbx-preview-stat-num">0.8s</span>
-              <span class="rbx-preview-stat-lbl">Build</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
+<section class="lx-hero" id="lxHero">
+  <div class="lx-hero-bg" aria-hidden="true">
+    <div class="lx-aurora"></div>
+    <div class="lx-grid-floor"></div>
+    <div class="lx-vignette"></div>
   </div>
+
+  <div class="lx-hero-content">
+    <p class="lx-eyebrow lx-reveal">ARRR Studio · HTML → Roblox</p>
+    <h1 class="lx-hero-title lx-reveal">
+      Desain di web.<br>
+      <em>Main di Roblox.</em>
+    </h1>
+    <p class="lx-hero-sub lx-reveal">
+      Tulis HTML &amp; CSS yang sudah kamu kuasai. ARRR Studio mengubahnya jadi GUI Roblox
+      yang identik — lengkap dengan script game, siap install dalam satu klik.
+    </p>
+    <div class="lx-hero-cta lx-reveal">
+      <a href="<?= url('converter') ?>" class="lx-btn lx-btn--accent lx-magnetic">
+        Mulai Convert
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none"><path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a href="#lxCollection" class="lx-btn lx-btn--ghost lx-magnetic" data-no-spa>Lihat Koleksi</a>
+    </div>
+  </div>
+
+  <!-- Mockup: editor HTML → layar game Roblox -->
+  <div class="lx-stage lx-reveal" id="lxStage" aria-hidden="true">
+    <div class="lx-window lx-window--code">
+      <div class="lx-window-bar"><i></i><i></i><i></i><span>shop.html</span></div>
+      <pre class="lx-code"><span class="t">&lt;div</span> <span class="a">class</span>=<span class="s">"card"</span><span class="t">&gt;</span>
+  <span class="t">&lt;h3&gt;</span>Dragon Sword<span class="t">&lt;/h3&gt;</span>
+  <span class="t">&lt;p</span> <span class="a">class</span>=<span class="s">"price"</span><span class="t">&gt;</span>💎 2,500<span class="t">&lt;/p&gt;</span>
+  <span class="t">&lt;button&gt;</span>Buy<span class="t">&lt;/button&gt;</span>
+<span class="t">&lt;/div&gt;</span></pre>
+    </div>
+
+    <div class="lx-window lx-window--game">
+      <div class="lx-game-sky"></div>
+      <div class="lx-game-shop">
+        <div class="lx-game-head"><b>ITEM SHOP</b><span>💎 12,450</span></div>
+        <div class="lx-game-cards">
+          <div class="lx-game-card"><i>⚔️</i><b>Dragon Sword</b><span>2,500 💎</span><em>Buy</em></div>
+          <div class="lx-game-card"><i>🛡️</i><b>Ice Shield</b><span>1,200 💎</span><em>Buy</em></div>
+          <div class="lx-game-card"><i>🔮</i><b>Magic Orb</b><span>3,800 💎</span><em>Buy</em></div>
+        </div>
+      </div>
+      <div class="lx-game-toast">✓ Berhasil beli Dragon Sword</div>
+    </div>
+  </div>
+
+  <a href="#lxNumbers" class="lx-scroll-cue" data-no-spa aria-label="Scroll">
+    <span>Scroll</span><i></i>
+  </a>
 </section>

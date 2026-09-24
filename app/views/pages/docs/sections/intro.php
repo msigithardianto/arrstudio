@@ -17,22 +17,18 @@
   <h2 data-anchor="intro-features">Fitur Utama</h2>
   <div class="docs-cards">
     <div class="docs-card">
-      <div class="docs-card-icon">👁️</div>
       <div class="docs-card-title">Live Preview</div>
       <div class="docs-card-desc">Preview HTML & Roblox berdampingan dengan zoom control.</div>
     </div>
     <div class="docs-card">
-      <div class="docs-card-icon">✏️</div>
       <div class="docs-card-title">VSCode Editor</div>
       <div class="docs-card-desc">Syntax highlight, line numbers, minimap, dan cursor tracking.</div>
     </div>
     <div class="docs-card">
-      <div class="docs-card-icon">📦</div>
       <div class="docs-card-title">Paket Lengkap</div>
       <div class="docs-card-desc">Satu file .rbxmx: GUI + GameConfig + Server + Client. Install 1 klik lewat plugin.</div>
     </div>
     <div class="docs-card">
-      <div class="docs-card-icon">🧠</div>
       <div class="docs-card-title">Game Logic Otomatis</div>
       <div class="docs-card-desc">Tombol Buy/Claim/Equip/Redeem/Spin dll. otomatis dibuatkan remote & handler server yang aman.</div>
     </div>
@@ -41,35 +37,30 @@
   <h2 data-anchor="intro-quick">Quick Navigation</h2>
   <div class="quick-nav">
     <a class="quick-nav-item" data-doc-nav="quickstart">
-      <div class="quick-nav-icon">⚡</div>
       <div>
         <div class="quick-nav-label">Get Started</div>
         <div class="quick-nav-title">Quick Start Guide</div>
       </div>
     </a>
     <a class="quick-nav-item" data-doc-nav="html">
-      <div class="quick-nav-icon">📄</div>
       <div>
         <div class="quick-nav-label">Reference</div>
         <div class="quick-nav-title">HTML & CSS Support</div>
       </div>
     </a>
     <a class="quick-nav-item" data-doc-nav="actions">
-      <div class="quick-nav-icon">🎯</div>
       <div>
         <div class="quick-nav-label">Reference</div>
         <div class="quick-nav-title">Actions & Toggle</div>
       </div>
     </a>
     <a class="quick-nav-item" data-doc-nav="logic">
-      <div class="quick-nav-icon">🧠</div>
       <div>
         <div class="quick-nav-label">Fitur</div>
         <div class="quick-nav-title">Game Logic</div>
       </div>
     </a>
     <a class="quick-nav-item" data-doc-nav="plugin">
-      <div class="quick-nav-icon">🔌</div>
       <div>
         <div class="quick-nav-label">Advanced</div>
         <div class="quick-nav-title">Plugin &amp; Install Pack</div>
@@ -78,7 +69,6 @@
   </div>
 
   <div class="callout">
-    <span class="callout-icon">💡</span>
     <div>
       <strong>Tip:</strong> Paste HTML di panel kiri — preview HTML tampil langsung.
       Klik <strong>⚡ Convert</strong> (atau <kbd>Ctrl+Enter</kbd>) untuk generate Lua dan

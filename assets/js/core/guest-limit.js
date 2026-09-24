@@ -49,7 +49,6 @@
     modal.innerHTML = `
       <div class="guest-gate-modal">
         <button class="guest-gate-close" aria-label="Close">×</button>
-        <div class="guest-gate-icon">🎁</div>
         <h2 class="guest-gate-title">Kuota gratis habis</h2>
         <p class="guest-gate-sub">
           Kamu sudah pakai ${MAX_USES}× convert gratis sebagai guest.
@@ -118,8 +117,7 @@
 
     const remaining = window.GuestLimit.getRemaining();
     badge.innerHTML = `
-      <span class="guest-quota-icon">🎁</span>
-      <span class="guest-quota-text"><strong>${remaining}</strong>/${MAX_USES} gratis</span>
+      <span class="guest-quota-text"><strong>${remaining}</strong>/${window.GuestLimit.MAX} gratis</span>
     `;
     badge.classList.toggle('guest-quota-badge--empty', remaining <= 0);
   };

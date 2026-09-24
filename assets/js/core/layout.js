@@ -151,3 +151,87 @@ document.addEventListener('click', (e) => {
   const modal = document.getElementById('pluginModal');
   if (modal && e.target === modal) closePluginModal();
 });
+
+/* ============================================================
+   THEME — aksen situs (Gold / Rosso / Azure / Emerald)
+   Disimpan di localStorage 'arrr_theme', diterapkan di <head> sebelum render.
+   ============================================================ */
+(function initTheme() {
+  const THEMES = [
+    { id: 'gold',    label: 'Gold',    color: '#d4af37' },
+    { id: 'rosso',   label: 'Rosso',   color: '#da291c' },
+    { id: 'azure',   label: 'Azure',   color: '#3b82f6' },
+    { id: 'emerald', label: 'Emerald', color: '#10b981' },
+  ];
+
+  function current() {
+    return document.documentElement.getAttribute('data-theme') || 'gold';
+  }
+
+  function setTheme(id) {
+    if (!THEMES.some(t => t.id === id)) return;
+    const root = document.documentElement;
+    root.classList.add('theme-switching');
+    root.setAttribute('data-theme', id);
+    try { localStorage.setItem('arrr_theme', id); } catch {}
+    setTimeout(() => root.classList.remove('theme-switching'), 400);
+    document.querySelectorAll('.theme-swatch').forEach(b => b.classList.toggle('active', b.dataset.theme === id));
+    window.dispatchEvent(new CustomEvent('theme:changed', { detail: { theme: id } }));
+  }
+
+  function closePicker() {
+    const el = document.getElementById('themePicker');
+    if (!el) return;
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 200);
+    document.removeEventListener('click', outside, true);
+  }
+
+  function outside(e) {
+    const el = document.getElementById('themePicker');
+    if (el && !el.contains(e.target) && !e.target.closest('[data-theme-open]')) closePicker();
+  }
+
+  // anchor: elemen pemicu (popover muncul di bawahnya)
+  function openThemePicker(anchor) {
+    if (document.getElementById('themePicker')) { closePicker(); return; }
+    const el = document.createElement('div');
+    el.id = 'themePicker';
+    el.className = 'theme-picker';
+    el.setAttribute('role', 'dialog');
+    el.innerHTML = `<div class="theme-picker-title">Theme</div>
+      <div class="theme-picker-grid">${THEMES.map(t => `
+        <button type="button" class="theme-swatch ${t.id === current() ? 'active' : ''}" data-theme="${t.id}" style="--swatch:${t.color}">
+          <span class="theme-swatch-dot"></span>${t.label}
+        </button>`).join('')}
+      </div>`;
+    document.body.appendChild(el);
+
+    const r = (anchor || document.body).getBoundingClientRect();
+    const left = Math.min(Math.max(12, r.right - el.offsetWidth), innerWidth - el.offsetWidth - 12);
+    el.style.left = left + 'px';
+    el.style.top = Math.min(r.bottom + 10, innerHeight - el.offsetHeight - 12) + 'px';
+    requestAnimationFrame(() => el.classList.add('show'));
+
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('.theme-swatch');
+      if (b) setTheme(b.dataset.theme);
+    });
+    setTimeout(() => document.addEventListener('click', outside, true), 0);
+  }
+
+  // Semua elemen [data-theme-open] membuka picker (navbar, menu profil, landing)
+  document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('[data-theme-open]');
+    if (!trigger) return;
+    e.preventDefault();
+    e.stopPropagation();
+    openThemePicker(trigger);
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePicker(); });
+  window.addEventListener('spa:navigated', closePicker);
+
+  window.setTheme = setTheme;
+  window.openThemePicker = openThemePicker;
+  window.ARRR_THEMES = THEMES;
+})();

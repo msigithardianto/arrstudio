@@ -16,7 +16,6 @@
         <input type="checkbox" onchange="setAutoConvert(this.checked)"> Auto
       </label>
       <button onclick="runConvert()" class="btn-convert" id="btnConvert" title="Convert ke Lua (Ctrl+Enter)">
-        <span class="btn-convert-icon">⚡</span>
         <span>Convert</span>
         <span class="btn-convert-quota" id="convertQuota" title="Sisa kuota gratis" hidden></span>
       </button>
@@ -26,7 +25,7 @@
   <div class="vscode-editor">
       <div class="vscode-tabs">
       <div class="vscode-tab active">
-          <span class="vscode-tab-icon">🌐</span>
+          
           <span class="vscode-tab-name">index.html</span>
           <span class="vscode-tab-close">×</span>
       </div>

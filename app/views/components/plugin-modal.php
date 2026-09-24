@@ -8,7 +8,7 @@
   <div class="plugin-modal">
     <div class="plugin-modal-head">
       <div class="plugin-modal-title">
-        <div class="plugin-modal-icon">⚡</div>
+        
         <div>
           <div class="plugin-modal-title-main">Cara Pakai Plugin ARRR Studio</div>
           <div class="plugin-modal-title-sub">Pasang plugin sekali, lalu install GUI + script dalam 1 klik</div>
@@ -77,9 +77,9 @@
         <div class="plugin-step-content">
           <div class="plugin-step-title">Install GUI + Game Logic (cara utama)</div>
           <div class="plugin-step-desc">
-            Di converter klik <strong>⬇ Export .rbxmx</strong>. Di Studio:
+            Di converter klik <strong>Export .rbxmx</strong>. Di Studio:
             klik kanan <strong>Workspace → Insert from File</strong> → pilih file <code>…_ArrUIPack.rbxmx</code>.
-            Buka widget plugin → klik <strong>📦 Install Pack</strong>. Otomatis dipindah ke:
+            Buka widget plugin → klik <strong>Install Pack</strong>. Otomatis dipindah ke:
             <ul class="plugin-install-list">
               <li><code>StarterGui</code> — ScreenGui + behavior script</li>
               <li><code>ReplicatedStorage › ArrUI › GameConfig</code> — harga, item, hadiah</li>
@@ -97,13 +97,13 @@
           <div class="plugin-step-title">Alternatif: Build dari Lua</div>
           <div class="plugin-step-desc">
             Copy tab <strong>Full Lua</strong> (atau <strong>Billboard</strong>), paste di widget plugin,
-            lalu klik <strong>🔨 Build</strong> — UI langsung dibuat di StarterGui.
+            lalu klik <strong>Build</strong> — UI langsung dibuat di StarterGui.
           </div>
         </div>
       </div>
 
       <div class="plugin-callout">
-        <span class="plugin-callout-icon">⚠️</span>
+        
         <div>
           <strong>Aktifkan API Services:</strong> <code>Home → Game Settings → Security</code> →
           centang <strong>Enable Studio Access to API Services</strong>. Dibutuhkan untuk
@@ -112,7 +112,7 @@
       </div>
 
       <div class="plugin-callout" style="background: linear-gradient(90deg, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.02)); border-left-color: #60a5fa;">
-        <span class="plugin-callout-icon">💡</span>
+        
         <div>
           <strong>Tanpa plugin:</strong> setelah Insert from File, pindahkan manual isi tiap folder di
           <code>ArrUIPack</code> ke service dengan nama yang sama. Petunjuknya ada di
@@ -124,7 +124,7 @@
 
     <div class="plugin-modal-foot">
       <button class="plugin-modal-btn primary" onclick="downloadFile('plugin'); closePluginModal();">
-        ⬇ Download Plugin Sekarang
+        Download Plugin
       </button>
       <button class="plugin-modal-btn ghost" onclick="closePluginModal()">
         Tutup

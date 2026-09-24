@@ -9,7 +9,7 @@
   <div class="code-block">
     <div class="code-header">
       <div class="code-lang"><span class="code-dot"></span> HTML</div>
-      <button class="code-copy" data-copy>📋 Copy</button>
+      <button class="code-copy" data-copy>Copy</button>
     </div>
     <pre><code>&lt;button id="shop-toggle"&gt;Shop&lt;/button&gt;
 &lt;div id="shop-panel" class="panel" style="display:none"&gt;

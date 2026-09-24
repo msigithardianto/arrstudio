@@ -10,7 +10,7 @@
   <div class="code-block">
     <div class="code-header">
       <div class="code-lang"><span class="code-dot"></span> index.html</div>
-      <button class="code-copy" data-copy>📋 Copy</button>
+      <button class="code-copy" data-copy>Copy</button>
     </div>
     <pre><code>&lt;style&gt;
   .card { width: 300px; padding: 20px; border-radius: 14px; color: #fff;
@@ -32,7 +32,6 @@
     dengan di Studio (rotasi, clip, stroke, RichText).
   </p>
   <div class="callout info">
-    <span class="callout-icon">🎁</span>
     <div>
       Guest dapat <strong>3× Convert gratis</strong> — sisa kuota tampil di tombol Convert.
       Ketik, paste, atau load sample <em>tidak</em> mengurangi kuota. Login = tanpa batas + opsi <strong>Auto</strong> convert.

@@ -79,7 +79,7 @@
 
     function showCopied(btn) {
       const original = btn.textContent;
-      btn.textContent = '✓ Copied!';
+      btn.textContent = 'Copied';
       btn.classList.add('copied');
       setTimeout(() => {
         btn.textContent = original;

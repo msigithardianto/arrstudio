@@ -5,10 +5,10 @@ $activePage = $activePage ?? 'converter';
 $navVariant = $navVariant ?? 'app';
 
 $navItems = [
-    ['id' => 'converter', 'label' => 'Converter', 'icon' => '⚡', 'url' => url('converter')],
-    ['id' => 'library',   'label' => 'Library',   'icon' => '📦', 'url' => url('library')],
-    ['id' => 'docs',      'label' => 'Docs',      'icon' => '📖', 'url' => url('docs')],
-    ['id' => 'prompt',    'label' => 'Prompt',    'icon' => '✨', 'url' => url('prompt')],
+    ['id' => 'converter', 'label' => 'Converter', 'url' => url('converter')],
+    ['id' => 'library',   'label' => 'Library', 'url' => url('library')],
+    ['id' => 'docs',      'label' => 'Docs', 'url' => url('docs')],
+    ['id' => 'prompt',    'label' => 'Prompt', 'url' => url('prompt')],
 ];
 
 // ==== AMBIL DATA USER ====
@@ -64,7 +64,6 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
       <a class="top-nav-item <?= is_active($item['id'], $activePage) ?>"
          href="<?= $item['url'] ?>"
          data-spa>
-        <span class="nav-icon"><?= $item['icon'] ?></span>
         <span class="nav-label"><?= $item['label'] ?></span>
         <span class="nav-indicator"></span>
       </a>
@@ -93,24 +92,28 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
       <div class="actions">
         <button onclick="downloadFile('rbxmx')" class="btn btn-action btn-export"
                 title="Paket lengkap untuk Roblox Studio: GUI + GameConfig + Server + Client (.rbxmx)">
-          <span class="btn-action-icon">⬇</span><span class="btn-action-label">Export .rbxmx</span>
+          <span class="btn-action-label">Export .rbxmx</span>
         </button>
         <button onclick="downloadFile('lua')" class="btn btn-action"
                 title="Full LocalScript (.lua) — bikin UI lewat script">
-          <span class="btn-action-icon">📜</span><span class="btn-action-label">Lua</span>
+          <span class="btn-action-label">Lua</span>
         </button>
         <button onclick="openPluginModal()" class="btn btn-action"
                 title="Download plugin + cara install ke Studio">
-          <span class="btn-action-icon">🔌</span><span class="btn-action-label">Plugin</span>
+          <span class="btn-action-label">Plugin</span>
         </button>
         <button onclick="copyCurrent()" id="copyBtn" class="btn btn-action"
                 title="Copy isi tab output yang sedang dibuka">
-          <span class="btn-action-icon">📋</span><span class="btn-action-label">Copy</span>
+          <span class="btn-action-label">Copy</span>
         </button>
       </div>
 
       <div class="top-divider"></div>
     <?php endif; ?>
+
+    <button type="button" class="theme-toggle-btn" data-theme-open title="Ganti tema" aria-label="Ganti tema">
+      <span class="theme-toggle-dot"></span>
+    </button>
 
     <?php if ($isLoggedIn): ?>
       <!-- ===== PROFILE (LOGGED IN) ===== -->
@@ -123,7 +126,7 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
           <div class="profile-name"><?= e($userName) ?></div>
           <div class="profile-role"><?= e($userRole) ?></div>
         </div>
-        <span class="profile-chevron">▾</span>
+        <svg class="profile-chevron" viewBox="0 0 12 12" width="10" height="10" fill="none"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
 
         <!-- Dropdown -->
         <div class="profile-menu" id="profileMenu">
@@ -138,24 +141,23 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
           </div>
           <div class="profile-menu-divider"></div>
           <a href="#" class="profile-menu-item">
-            <span class="profile-menu-icon">👤</span> Profile
+            Profile
           </a>
           <a href="#" class="profile-menu-item">
-            <span class="profile-menu-icon">⚙️</span> Settings
+            Settings
           </a>
-          <a href="#" class="profile-menu-item">
-            <span class="profile-menu-icon">🎨</span> Theme
+          <a href="#" class="profile-menu-item" data-theme-open data-no-spa>
+            Theme
           </a>
           <div class="profile-menu-divider"></div>
           <a href="<?= url('logout') ?>" class="profile-menu-item danger" data-no-spa>
-            <span class="profile-menu-icon">🚪</span> Sign out
+            Sign out
           </a>
         </div>
       </div>
     <?php else: ?>
       <!-- ===== LOGIN BUTTON (GUEST) ===== -->
       <a href="<?= url('login') ?>" class="btn btn-gold" data-no-spa>
-        <span class="btn-icon">→</span>
         <span class="btn-label">Masuk</span>
       </a>
     <?php endif; ?>

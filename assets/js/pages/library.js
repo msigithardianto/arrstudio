@@ -92,7 +92,6 @@
     if (filtered.length === 0) {
       grid.innerHTML = `
         <div class="lib-empty">
-          <div class="lib-empty-icon">🔍</div>
           <div class="lib-empty-title">Tidak ada template ditemukan</div>
           <div class="lib-empty-desc">Coba kata kunci lain atau ganti filter.</div>
         </div>
@@ -100,34 +99,34 @@
       return;
     }
 
-    grid.innerHTML = filtered.map(s => `
-      <div class="lib-card" onclick="loadToConverter('${s.id}')">
+    const CAT = { commerce: 'Shop & Reward', hud: 'HUD', menu: 'Menu', rpg: 'RPG', ui: 'UI', layout: 'Layout' };
+    grid.innerHTML = filtered.map((s, i) => `
+      <article class="lib-card" onclick="loadToConverter('${s.id}')" tabindex="0"
+               onkeydown="if(event.key==='Enter')loadToConverter('${s.id}')">
         <div class="lib-card-preview">
-          <iframe src="${window.__samplesUrl || 'samples/'}${s.id}.html" scrolling="no" loading="lazy"></iframe>
-          <div class="lib-card-overlay">
-            <button class="lib-card-overlay-btn primary" onclick="event.stopPropagation(); loadToConverter('${s.id}')">
-              ⚡ Open
-            </button>
-            <button class="lib-card-overlay-btn ghost" onclick="event.stopPropagation(); previewTemplate('${s.id}')">
-              👁️ Preview
-            </button>
-          </div>
+          <iframe src="${window.__samplesUrl || 'samples/'}${s.id}.html" scrolling="no" loading="lazy" tabindex="-1" title="${esc(s.name)}"></iframe>
+          <span class="lib-card-index">${String(SAMPLES.indexOf(s) + 1).padStart(2, '0')}</span>
+          ${s.badges.includes('new') ? '<span class="lib-card-new">Baru</span>' : ''}
         </div>
         <div class="lib-card-body">
-          <div class="lib-card-header">
-            <div class="lib-card-name">${esc(s.name)}</div>
-            <div class="lib-card-badges">
-              ${s.badges.map(b => `<span class="lib-badge ${b}">${b}</span>`).join('')}
-            </div>
-          </div>
-          <div class="lib-card-desc">${esc(s.desc)}</div>
-          ${s.logic ? `<div class="lib-card-logic" title="Otomatis dibuatkan di tab Game Logic">🧠 ${esc(s.logic)}</div>` : ''}
-          <div class="lib-card-meta">
-            ${s.tags.map(t => `<span class="lib-chip">#${esc(t)}</span>`).join('')}
+          <p class="lib-card-cat">${esc(CAT[s.category] || s.category)}</p>
+          <h3 class="lib-card-name">${esc(s.name)}</h3>
+          <p class="lib-card-desc">${esc(s.desc)}</p>
+          ${s.logic ? `<p class="lib-card-logic"><span>Logic</span>${esc(s.logic)}</p>` : ''}
+          <div class="lib-card-actions">
+            <span class="lib-card-open">Buka di Converter <i>→</i></span>
+            <button type="button" class="lib-card-preview-btn" onclick="event.stopPropagation(); previewTemplate('${s.id}')">Preview</button>
           </div>
         </div>
-      </div>
+      </article>
     `).join('');
+
+    // Skala iframe preview mengikuti lebar kartu (desain 800×600)
+    grid.querySelectorAll('.lib-card-preview').forEach(p => {
+      p.style.setProperty('--scale', (p.clientWidth / 800).toFixed(4));
+    });
+    const count = document.getElementById('libCount');
+    if (count) count.textContent = `${filtered.length} template`;
   }
 
   /* ============================================================
@@ -191,6 +190,12 @@
   /* ============================================================
      EXPOSE
      ============================================================ */
+  window.addEventListener('resize', () => {
+    document.querySelectorAll('.lib-card-preview').forEach(p => {
+      p.style.setProperty('--scale', (p.clientWidth / 800).toFixed(4));
+    });
+  });
+
   window.loadToConverter  = loadToConverter;
   window.previewTemplate  = previewTemplate;
   window.initLibrary      = initLibrary;

@@ -15,7 +15,7 @@
   <div class="code-block">
     <div class="code-header">
       <div class="code-lang"><span class="code-dot"></span> JSON Request</div>
-      <button class="code-copy" data-copy>📋 Copy</button>
+      <button class="code-copy" data-copy>Copy</button>
     </div>
     <pre><code>{
   "html": "&lt;div data-arrr-idx=\"0\" class=\"card\"&gt;...&lt;/div&gt;",
@@ -32,7 +32,7 @@
   <div class="code-block">
     <div class="code-header">
       <div class="code-lang"><span class="code-dot"></span> JSON Request</div>
-      <button class="code-copy" data-copy>📋 Copy</button>
+      <button class="code-copy" data-copy>Copy</button>
     </div>
     <pre><code>{ "nodes": [ ... ], "canvasW": 800, "canvasH": 600, "billboard": { "name": "Player" } }</code></pre>
   </div>
@@ -41,7 +41,7 @@
   <div class="code-block">
     <div class="code-header">
       <div class="code-lang"><span class="code-dot"></span> JSON Response</div>
-      <button class="code-copy" data-copy>📋 Copy</button>
+      <button class="code-copy" data-copy>Copy</button>
     </div>
     <pre><code>{
   "script": "-- behavior", "fullscript": "-- full lua", "tree": "...",
