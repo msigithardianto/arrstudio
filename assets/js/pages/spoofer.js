@@ -304,12 +304,19 @@
           'API key ' + (r.expired ? 'kedaluwarsa' : (r.enabled === false ? 'nonaktif' : 'valid & aktif'))
           + (r.name ? ' — "' + r.name + '"' : '')));
         if (r.userId) rows.push(line(true, 'Pemilik key: User ID ' + r.userId));
-        ['asset:read', 'asset:write', 'legacy-asset:manage'].forEach(op =>
-          rows.push(line(!r.missing.includes(op), 'Scope ' + op + (r.missing.includes(op) ? ' — belum ada' : ''))));
+        if (r.scopes.length) {
+          ['asset:read', 'asset:write', 'legacy-asset:manage'].forEach(op =>
+            rows.push(line(!r.missing.includes(op), 'Scope ' + op + (r.missing.includes(op) ? ' — belum ada' : ''))));
+        } else {
+          rows.push(line(null, 'Scope tidak bisa dibaca dari Roblox — lihat hasil tes download'));
+        }
+        if (r.rawScopes) rows.push(line(null, 'Data scope dari Roblox: ' + JSON.stringify(r.rawScopes).slice(0, 300)));
       } else {
         rows.push(line(null, 'Detail API key tidak bisa dibaca (introspect tidak tersedia)'));
       }
-      if (r.asset) {
+      if (r.asset && r.userId && r.asset.id === String(r.userId)) {
+        rows.push(line(false, `${r.asset.id} itu User ID kamu, bukan Asset ID. Pakai ID aset (gambar/audio) milikmu — lihat di create.roblox.com → Creations, atau angka di link roblox.com/library/<ID>/...`));
+      } else if (r.asset) {
         rows.push(line(r.asset.ok, r.asset.ok
           ? `Tes download ${r.asset.id}: berhasil (${r.asset.kind}, ${(r.asset.bytes / 1024).toFixed(0)} KB)`
           : `Tes download ${r.asset.id}: ${r.asset.error}`));

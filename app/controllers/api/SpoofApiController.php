@@ -5,6 +5,8 @@
 // POST JSON  {action:"status",   apiKey, operationId}
 // POST JSON  {action:"check",    apiKey, assetId?}   → cek koneksi API key (+ tes download 1 aset)
 // POST form  action=upload, apiKey, creatorType, creatorId, name?, file (multipart)
+// POST JSON  {action:"ytmp3", apiKey, creatorType, creatorId, token, name?}
+//            → upload langsung hasil YT → MP3 (file sudah di server, tanpa download/upload ulang)
 //
 // Balasan sukses: {assetId} atau {operationId} (belum selesai → JS panggil "status")
 
@@ -15,6 +17,10 @@ class SpoofApiController extends ApiController
         if (!Auth::check()) {
             $this->error('Login dulu untuk memakai Auto Spoof.', ['login_url' => url('login')], 401);
         }
+        $owner = (string)Auth::id();
+
+        // Lepas lock session — JS kirim beberapa upload paralel
+        session_write_close();
 
         $isMultipart = str_starts_with($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data');
         $input       = $isMultipart ? $_POST : (Request::json() ?? []);
@@ -54,6 +60,17 @@ class SpoofApiController extends ApiController
                     $name   = trim((string)($input['name'] ?? '')) ?: 'Asset ' . $assetId;
                     $result = $service->uploadAndWait($file['bytes'], $name, $creatorType, $creatorId);
                     $this->json($result + ['sourceId' => $file['sourceId']]);
+
+                case 'ytmp3':
+                    [$creatorType, $creatorId] = $this->creator($input);
+                    $file = (new YoutubeMp3Service())->find((string)($input['token'] ?? ''), $owner);
+                    if (filesize($file['path']) > RobloxAssetService::MAX_BYTES) {
+                        $this->error('MP3 terlalu besar untuk Roblox (maks 20MB) — pilih bitrate lebih kecil');
+                    }
+                    $bytes  = (string)file_get_contents($file['path']);
+                    $name   = trim((string)($input['name'] ?? '')) ?: pathinfo($file['filename'], PATHINFO_FILENAME);
+                    $result = $service->uploadAndWait($bytes, $name, $creatorType, $creatorId);
+                    $this->json($result);
 
                 case 'upload':
                     [$creatorType, $creatorId] = $this->creator($input);

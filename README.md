@@ -30,7 +30,8 @@ api/
   convert.php              POST HTML → node tree     (ConvertApiController)
   generate.php             POST node tree → Lua/rbxmx (GenerateApiController)
   spoof.php                Auto Spoof: re-upload aset via Open Cloud (SpoofApiController)
-  ytmp3.php                YT → MP3 massal + Audio Enhancement speed/pitch (YtMp3ApiController)
+  ytmp3.php                YT → MP3 massal + Audio Enhancement speed/pitch (YtMp3ApiController);
+                           upload langsung ke Roblox lewat spoof.php action "ytmp3"
 app/
   bootstrap.php            konstanta path, autoload, .env, session
   config/
