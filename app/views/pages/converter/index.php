@@ -15,6 +15,5 @@
 
   <?php View::component('plugin-modal'); ?>
 
-  <?php View::component('toast'); ?>
 
 </main>
