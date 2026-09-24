@@ -17,6 +17,7 @@ class RobloxAssetService
     private const INTROSPECT_URL = 'https://apis.roblox.com/api-keys/v1/introspect';
     private const PERMISSIONS_URL = 'https://apis.roblox.com/asset-permissions-api/v1/assets/permissions';
     private const PLACE_UNIVERSE_URL = 'https://apis.roblox.com/universes/v1/places/';
+    private const ASSET_URL = 'https://apis.roblox.com/assets/v1/assets/';
 
     /** Aset per request izin (dipecah biar aman dari batas batch Roblox) */
     private const GRANT_CHUNK = 10;
@@ -316,6 +317,42 @@ class RobloxAssetService
         return $res['status'] === 200 && $id !== null && preg_match('/^\d{1,20}$/', (string)$id) ? (string)$id : null;
     }
 
+
+    // ============================================================
+    // STATUS REVIEW (moderasi) — GET assets/v1/assets/{id}, scope asset:read
+    // ============================================================
+
+    /**
+     * Status moderasi banyak aset: Reviewing | Approved | Rejected.
+     * @param list<string> $assetIds
+     * @return array{states:array<string,string>, errors:array<string,string>}
+     */
+    public function moderation(array $assetIds): array
+    {
+        $states = [];
+        $errors = [];
+        foreach (array_values(array_unique(array_map('strval', $assetIds))) as $id) {
+            try {
+                $res  = $this->request('GET', self::ASSET_URL . rawurlencode($id), ['x-api-key: ' . $this->apiKey]);
+                $json = json_decode($res['body'], true) ?: [];
+                if ($res['status'] === 200) {
+                    $state = (string)($json['moderationResult']['moderationState'] ?? '');
+                    // Tanpa moderationResult → belum ada hasil review
+                    $states[$id] = in_array($state, ['Reviewing', 'Approved', 'Rejected'], true) ? $state : 'Reviewing';
+                    continue;
+                }
+                if ($res['status'] === 429) {
+                    $errors[$id] = 'Rate limit — dicek lagi nanti';
+                    break; // sisanya dicek di putaran berikutnya
+                }
+                $errors[$id] = 'HTTP ' . $res['status'] . ': ' . self::errorMessage($json, $res['body'])
+                    . ($res['status'] === 403 ? ' — butuh scope asset:read & aset milik pemilik API key' : '');
+            } catch (Throwable $e) {
+                $errors[$id] = $e->getMessage();
+            }
+        }
+        return ['states' => $states, 'errors' => $errors];
+    }
 
     // ============================================================
     // CEK KONEKSI API KEY

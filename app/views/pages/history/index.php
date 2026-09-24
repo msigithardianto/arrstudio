@@ -35,6 +35,13 @@ $isLoggedIn = Auth::check();
           <option value="no">Belum diizinkan ke game</option>
           <option value="yes">Sudah diizinkan ke game</option>
         </select>
+        <select id="hsMod" class="sp-input sp-select hs-filter">
+          <option value="">Semua status review</option>
+          <option value="Approved">Siap dipakai</option>
+          <option value="Reviewing">Masih direview</option>
+          <option value="Rejected">Ditolak</option>
+        </select>
+        <button type="button" class="sp-btn-ghost" id="hsModCheck">Cek status review</button>
         <button type="button" class="sp-btn-ghost" id="hsRefresh">Muat ulang</button>
       </div>
       <p class="sp-hint" id="hsCount">Memuat…</p>
@@ -44,10 +51,10 @@ $isLoggedIn = Auth::check();
           <thead>
             <tr>
               <th><input type="checkbox" id="hsAll" aria-label="Pilih semua"></th>
-              <th>Waktu</th><th>Nama</th><th>Sumber</th><th>Asset ID</th><th>Game</th>
+              <th>Waktu</th><th>Nama</th><th>Sumber</th><th>Asset ID</th><th>Review</th><th>Game</th>
             </tr>
           </thead>
-          <tbody id="hsRows"><tr class="sp-empty"><td colspan="6">Memuat…</td></tr></tbody>
+          <tbody id="hsRows"><tr class="sp-empty"><td colspan="7">Memuat…</td></tr></tbody>
         </table>
       </div>
       <button type="button" class="sp-btn-ghost hs-more" id="hsMore" hidden>Tampilkan lebih banyak</button>

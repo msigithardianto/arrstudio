@@ -18,6 +18,7 @@
   let running = false;
   let stopped = false;
   let files   = [];
+  let modStop = null;   // stop() pengecek status review Roblox
 
   /* ============================================================
      STORAGE (per browser) — API key hanya kalau "Ingat" dicentang
@@ -96,7 +97,9 @@
         <td>${i + 1}</td>
         <td class="sp-mono">${esc(it.label)}</td>
         <td><span class="sp-status ${it.status}">${esc(it.status === 'err' ? it.error : (it.note || STATUS_LABEL[it.status]))}</span></td>
-        <td class="sp-mono">${it.newId ? esc(it.newId) : '—'}</td>
+        <td class="sp-mono">${it.newId
+          ? esc(it.newId) + `<span class="sp-mod">${it.mod || it.modErr ? moderationBadge(it.mod, it.modErr) : '<span class="sp-status run">Menunggu review…</span>'}</span>`
+          : '—'}</td>
       </tr>`).join('');
   }
 
@@ -190,6 +193,7 @@
     it.newId  = String(data.assetId);
     it.note   = '';
     it.status = 'ok';
+    startModWatch(cfg.apiKey);
   }
 
   async function worker(queue, cfg) {
@@ -230,6 +234,7 @@
     }
 
     saveSettings();
+    askNotify();
     running = true;
     stopped = false;
     $('spStart').disabled = true;
@@ -260,6 +265,32 @@
       $('spGrantIds').value = items.filter(i => i.status === 'ok').map(i => i.newId).join('\n');
       await grantFromBox();
     }
+  }
+
+  /** Cek status review aset hasil upload sampai semua Approved / Rejected */
+  function startModWatch(apiKey) {
+    if (modStop || !apiKey) return;
+    modStop = watchModeration({
+      apiKey,
+      getIds: () => items.filter(i => i.status === 'ok' && !MOD_FINAL[i.mod]).map(i => i.newId),
+      onUpdate: (r) => {
+        items.forEach(i => {
+          if (i.status !== 'ok') return;
+          if (r.states[i.newId]) { i.mod = r.states[i.newId]; i.modErr = ''; }
+          else if (r.errors[i.newId]) i.modErr = r.errors[i.newId];
+        });
+        renderRows();
+      },
+      onDone: (allFinal) => {
+        modStop = null;
+        const up = items.filter(i => i.status === 'ok');
+        if (allFinal && up.length) {
+          const ok = up.filter(i => i.mod === 'Approved').length;
+          showToast(`Review selesai: ${ok}/${up.length} aset siap dipakai`, ok === up.length ? 'success' : 'warning', 5000);
+          notify('ARRR Studio — review selesai', `${ok}/${up.length} aset siap dipakai di Roblox`);
+        }
+      },
+    });
   }
 
   /* ============================================================
@@ -316,6 +347,82 @@
     return `<p><b>${failedIds.length ? 'Sebagian gagal' : 'Semua aset sudah diizinkan ke game'}</b></p><ul>${rows.join('')}</ul>`;
   }
   window.ArrrGrantSummary = grantSummaryHtml;
+
+  /* ============================================================
+     STATUS REVIEW ROBLOX — helper dipakai spoofer, ytmp3, history
+     ============================================================ */
+  const MOD_FINAL = { Approved: true, Rejected: true };
+  const MOD_LABEL = { Reviewing: 'Direview…', Approved: 'Siap dipakai', Rejected: 'Ditolak moderasi' };
+  const MOD_CLASS = { Reviewing: 'run', Approved: 'ok', Rejected: 'err' };
+
+  /** → {states:{id: state}, errors:{id: pesan}} (dipecah 25 per request) */
+  async function checkModeration(apiKey, ids) {
+    const states = {};
+    const errors = {};
+    for (let i = 0; i < ids.length; i += 25) {
+      try {
+        const r = await callApi({ action: 'moderation', apiKey, assetIds: ids.slice(i, i + 25) });
+        Object.assign(states, r.states || {});
+        Object.assign(errors, r.errors || {});
+      } catch (e) {
+        ids.slice(i, i + 25).forEach(id => { errors[id] = e.message; });
+      }
+    }
+    return { states, errors };
+  }
+
+  /**
+   * Cek berkala sampai semua final (Approved/Rejected) atau lewat maxMinutes.
+   * getIds() → asset ID yang masih perlu dicek; onUpdate(result) tiap putaran; onDone() di akhir.
+   * Balas fungsi stop().
+   */
+  function watchModeration({ apiKey, getIds, onUpdate, onDone, intervalMs = window.__arrrModInterval || 30000, maxMinutes = 60 }) {
+    let stopped = false;
+    let timer   = null;
+    const until = Date.now() + maxMinutes * 60000;
+    const tick = async () => {
+      if (stopped) return;
+      const ids = getIds();
+      if (!ids.length || Date.now() > until) {
+        stopped = true;
+        if (onDone) onDone(!ids.length);
+        return;
+      }
+      const r = await checkModeration(apiKey, ids);
+      if (stopped) return;
+      onUpdate(r);
+      timer = setTimeout(tick, intervalMs);
+    };
+    tick();
+    return () => { stopped = true; clearTimeout(timer); };
+  }
+
+  function moderationBadge(state, error) {
+    if (!state && !error) return '';
+    if (!state) return `<span class="sp-status warn" title="${esc(error)}">Status belum bisa dicek</span>`;
+    return `<span class="sp-status ${MOD_CLASS[state] || 'run'}">${esc(MOD_LABEL[state] || state)}</span>`;
+  }
+
+  /** Minta izin notifikasi browser (panggil dari klik user) */
+  function askNotify() {
+    try {
+      if ('Notification' in window && Notification.permission === 'default') Notification.requestPermission();
+    } catch (e) { /* abaikan */ }
+  }
+
+  /** Notifikasi browser kalau tab sedang tidak dilihat (review bisa lama) */
+  function notify(title, body) {
+    try {
+      if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body, icon: (window.__logoUrl || undefined) });
+      }
+    } catch (e) { /* abaikan */ }
+  }
+
+  window.ArrrModeration = {
+    check: checkModeration, watch: watchModeration, badge: moderationBadge,
+    isFinal: (s) => !!MOD_FINAL[s], askNotify, notify,
+  };
 
   async function grantFromBox() {
     const apiKey     = $('spApiKey').value.trim();
