@@ -54,7 +54,8 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
   </button>
 
   <!-- Brand -->
-  <a href="<?= url('converter') ?>" class="brand" data-spa>
+  <!-- Logo → landing (reload penuh: landing tidak punya header aplikasi yang di-swap SPA) -->
+  <a href="<?= url('landing') ?>" class="brand" data-no-spa title="Beranda">
     <div class="brand-icon">
       <img src="<?= asset('img/logo.png') ?>" alt="ARRR Studio">
     </div>
