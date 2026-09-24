@@ -1051,3 +1051,36 @@ html.spa-ready body > * {
 html.spa-loading body > * {
   opacity: 0.6;
 }
+/* ============================================================
+   GAME LOGIC — pilihan file (Module / Server / Client)
+   ============================================================ */
+.logic-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: var(--head);
+  border-bottom: 1px solid var(--edge);
+  flex-shrink: 0;
+}
+.logic-bar.hidden { display: none; }
+.logic-files { display: flex; gap: 6px; flex-wrap: wrap; }
+.logic-file {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: #1c1c22;
+  color: var(--silver);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.logic-file small { color: var(--text-dim); font-size: 10px; }
+.logic-file:hover { border-color: var(--gold-dim); color: #f4f4f6; }
+.logic-file.active { border-color: var(--gold); color: var(--gold-bright); background: rgba(212, 175, 55, 0.08); }
+.logic-file.ghost { margin-left: auto; }
+.logic-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 10.5px; color: var(--text-dim); }
+.logic-path { color: var(--silver); }

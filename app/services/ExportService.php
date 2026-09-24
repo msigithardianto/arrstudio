@@ -16,7 +16,13 @@ class ExportService
 
     public function build(array $nodes, int $width, int $height, ?array $billboard = null): array
     {
+        $logic = GameLogicGenerator::generate($nodes);
+
         return [
+            'module'       => $logic['module'],
+            'server'       => $logic['server'],
+            'client'       => $logic['client'],
+            'logicSummary' => $this->logicSummary($logic['spec']),
             'script'     => LuaGenerator::generateBehaviorScript($nodes),
             'fullscript' => $this->withAutoScale(FullScriptGenerator::generateFullScript($nodes, $width, $height)),
             'tree'       => LuaGenerator::renderTreeText($nodes),
@@ -25,6 +31,19 @@ class ExportService
             'billboard'  => BillboardGenerator::generate($billboard ?? self::DEFAULT_BILLBOARD),
             'report'     => LuaGenerator::renderReport($nodes),
         ];
+    }
+
+    /**
+     * Ringkasan singkat hasil analisis GUI (ditampilkan di tab Game Logic)
+     */
+    private function logicSummary(array $spec): string
+    {
+        $parts = [];
+        if ($spec['items'])      $parts[] = count($spec['items']) . ' item';
+        if ($spec['currencies']) $parts[] = implode('/', array_keys($spec['currencies']));
+        if ($spec['settings'])   $parts[] = count($spec['settings']) . ' setting';
+        if ($spec['actions'])    $parts[] = implode(', ', $spec['actions']);
+        return $parts ? implode(' · ', $parts) : 'Tidak ada aksi server terdeteksi — template dasar';
     }
 
     /**
