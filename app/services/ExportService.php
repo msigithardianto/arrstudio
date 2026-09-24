@@ -22,7 +22,11 @@ class ExportService
         // 2. Elemen yang diklik (card item, label aksi, toggle) → TextButton di Studio
         $nodes = $this->promoteClickables($nodes, $spec);
 
-        // 3. Bingkai UI: root dirapatkan ke (0,0), ScreenGui & container diberi nama sesuai UI
+        // 3. Bentuk CSS tanpa padanan langsung (border di dalam kotak, border sebagian, radius sebagian)
+        $nodes = ShapeFixer::apply($nodes);
+        $previewNodes = $nodes;   // posisi asli di canvas desain (untuk preview Roblox di web)
+
+        // 4. Bingkai UI: root dirapatkan ke (0,0), ScreenGui & container diberi nama sesuai UI
         [$nodes, $width, $height, $ui] = $this->frameUi($nodes, $width, $height);
 
         $logic = GameLogicGenerator::generate($nodes, $spec, $ui);
@@ -40,6 +44,7 @@ class ExportService
             'client'       => $logic['client'],
             'logicSummary' => $this->logicSummary($spec),
             'ui'           => $ui,
+            'nodes'        => $previewNodes,
         ];
     }
 

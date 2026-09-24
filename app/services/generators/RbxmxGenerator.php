@@ -88,6 +88,7 @@ class RbxmxGenerator {
                 $p("<UDim2 name=\"Position\"><XS>0</XS><XO>{$n['x']}</XO><YS>0</YS><YO>{$n['y']}</YO></UDim2>");
             }
             $p("<UDim2 name=\"Size\"><XS>0</XS><XO>{$n['w']}</XO><YS>0</YS><YO>{$n['h']}</YO></UDim2>");
+            if (abs($n['rotation'] ?? 0) > 0.01) $p('<float name="Rotation">' . round($n['rotation'], 1) . '</float>');
             $p(self::color3('BackgroundColor3', $st['bgColor']));
             $p('<float name="BackgroundTransparency">' . $st['bgTransparency'] . '</float>');
             $p('<int name="BorderSizePixel">0</int>');

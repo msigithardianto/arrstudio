@@ -77,6 +77,7 @@ class FullScriptGenerator {
             // Posisi persis hasil render browser (relatif ke parent)
             $L[] = "{$v}.Position = UDim2.new(0, " . (int)$n['x'] . ", 0, " . (int)$n['y'] . ")";
             $L[] = "{$v}.Size = UDim2.new(0, {$n['w']}, 0, {$n['h']})";
+            if (abs($n['rotation'] ?? 0) > 0.01) $L[] = "{$v}.Rotation = " . round($n['rotation'], 1);
             $st = NodeStyle::resolve($n);
             $L[] = "{$v}.BackgroundColor3 = Color3.new(" . LuaHelper::c3($st['bgColor']) . ')';
             $L[] = "{$v}.BackgroundTransparency = " . $st['bgTransparency'];

@@ -23,6 +23,7 @@ const LOGIC_FILES = {
   client: { path: 'StarterPlayerScripts › ArrUIClient (LocalScript)',       file: 'ArrUIClient.client.lua' },
 };
 let lastNodes = [];
+let previewNodes = null;   // node final dari server (setelah ShapeFixer) → preview Roblox
 let viewMode = 'html';
 let zoom = 1;
 let autoFit = true;
@@ -105,7 +106,7 @@ function setViewMode(mode) {
   if (rw) rw.classList.toggle('hidden', isHtml);
   const vh = $('viewHTML'); if (vh) vh.classList.toggle('active', isHtml);
   const vr = $('viewRBX'); if (vr) vr.classList.toggle('active', !isHtml);
-  if (!isHtml) renderRobloxPreview(lastNodes);
+  if (!isHtml) renderRobloxPreview(previewNodes || lastNodes);
   applyZoom();
 }
 
@@ -312,7 +313,8 @@ async function convert(options = {}) {
     logicSummary     = gen.logicSummary || '';
 
     renderTab();
-    renderRobloxPreview(lastNodes);
+    previewNodes = gen.nodes || null;
+    renderRobloxPreview(previewNodes || lastNodes);
     if (badgeNodes) badgeNodes.textContent = lastNodes.length + ' nodes';
 
     const totalIssues = lastNodes.reduce((s,n) => s + (n.unsupported ? n.unsupported.length : 0), 0);
@@ -370,7 +372,7 @@ const MEASURE_PROPS = [
   'display', 'position', 'visibility', 'opacity', 'z-index', 'cursor',
   'color', 'background-color', 'background-image',
   'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
-  'border-top-color', 'border-top-style',
+  'border-top-color', 'border-right-color', 'border-bottom-color', 'border-left-color', 'border-top-style',
   'border-top-left-radius', 'border-top-right-radius',
   'border-bottom-right-radius', 'border-bottom-left-radius',
   'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
@@ -577,6 +579,7 @@ async function measureRectMap(rootEl, iframeDoc) {
   // ==== 5. Ukur & susun rectMap ====
   const root = rootEl.getBoundingClientRect();
   const map = [];
+  const byIdx = new Map();
 
   for (const el of elements) {
     const idx = idxOf.get(el);
@@ -594,17 +597,41 @@ async function measureRectMap(rootEl, iframeDoc) {
     }
 
     const r = el.getBoundingClientRect();
-    const w = Math.round(r.width), h = Math.round(r.height);
     const style = styles.get(el);
 
-    // Radius % → px (CSS clamp ke setengah sisi terpendek)
-    for (const k of ['border-top-left-radius', 'border-top-right-radius',
-                     'border-bottom-right-radius', 'border-bottom-left-radius']) {
-      if (!style[k]) continue;
-      const first = style[k].split(' ')[0];
-      let px = first.endsWith('%') ? parseFloat(first) / 100 * Math.min(w, h) : parseFloat(first);
-      px = Math.min(px || 0, Math.min(w, h) / 2);
-      style[k] = Math.round(px) + 'px';
+    // transform: rotate/scale → ukuran asli (sebelum rotasi) + Rotation Roblox.
+    // Roblox memutar GuiObject di titik tengahnya → pakai titik tengah visual dari browser.
+    let w = Math.round(r.width), h = Math.round(r.height);
+    let x = r.left - root.left, y = r.top - root.top;
+    let rotation = 0;
+    const tm = (style.transform || '').match(/^matrix\(([^)]+)\)/);
+    if (tm && !hiddenRoots.has(el)) {
+      const [a, b, c, d] = tm[1].split(',').map(parseFloat);
+      const sx = Math.hypot(a, b) || 1;
+      const sy = Math.abs(a * d - b * c) / sx || 1;
+      rotation = Math.round(Math.atan2(b, a) * 180 / Math.PI * 10) / 10;
+      const baseW = el.offsetWidth ?? r.width, baseH = el.offsetHeight ?? r.height;
+      const cx = x + r.width / 2, cy = y + r.height / 2;
+      w = Math.round(baseW * sx);
+      h = Math.round(baseH * sy);
+      x = cx - w / 2;
+      y = cy - h / 2;
+    }
+
+    // Radius → px dengan aturan CSS: kalau jumlah radius > panjang sisi,
+    // SEMUA radius diskalakan dengan faktor yang sama (bukan dipotong per sudut)
+    const RK = ['border-top-left-radius', 'border-top-right-radius',
+                'border-bottom-right-radius', 'border-bottom-left-radius'];
+    if (RK.some(k => style[k])) {
+      const px = RK.map(k => {
+        const first = (style[k] || '0').split(' ')[0];
+        return first.endsWith('%') ? parseFloat(first) / 100 * Math.min(w, h) : (parseFloat(first) || 0);
+      });
+      const [tl, tr, br, bl] = px;
+      const f = Math.min(1,
+        w / (tl + tr), w / (bl + br),   // x/0 = Infinity → sisi tanpa radius tidak membatasi
+        h / (tl + bl), h / (tr + br));
+      RK.forEach((k, i) => { style[k] = Math.round(px[i] * f) + 'px'; });
     }
 
     const tag = el.tagName.toLowerCase();
@@ -619,11 +646,23 @@ async function measureRectMap(rootEl, iframeDoc) {
     }
     const text = content.text.replace(/ *\n */g, '\n').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '');
 
+    // Anak dari elemen yang diputar: Roblox ikut memutar descendant,
+    // jadi posisinya dihitung di ruang parent yang BELUM diputar (offsetLeft/Top)
+    const parentRect = parentIdx >= 0 ? byIdx.get(parentIdx) : null;
+    if (parentRect && (parentRect.rotation || parentRect.inRotated) && el.offsetParent === elements[parentIdx]) {
+      x = parentRect.x + el.offsetLeft;
+      y = parentRect.y + el.offsetTop;
+      w = el.offsetWidth;
+      h = el.offsetHeight;
+    }
+
     map.push({
       idx, parentIdx,
-      x: Math.round(r.left - root.left),
-      y: Math.round(r.top - root.top),
+      inRotated: !!(parentRect && (parentRect.rotation || parentRect.inRotated)),
+      x: Math.round(x),
+      y: Math.round(y),
       w, h,
+      rotation,
       selfHidden: hiddenRoots.has(el),
       id: el.id || '',
       className: (typeof el.className === 'string') ? el.className : '',
@@ -633,6 +672,7 @@ async function measureRectMap(rootEl, iframeDoc) {
         : '',
       style,
     });
+    byIdx.set(idx, map[map.length - 1]);
   }
 
   // ==== 6. Pulihkan style asli ====
@@ -734,10 +774,20 @@ function renderRobloxPreview(nodes) {
 
     el.style.borderRadius = n.radius + 'px';
 
+    // Rotation Roblox ikut memutar descendant (di sekitar titik tengah ancestor)
+    let rot = n.rotation ? ` rotate(${n.rotation}deg)` : '';
+    for (let p = idToNode[n.parentId]; p; p = idToNode[p.parentId]) {
+      if (!p.rotation) continue;
+      const pp = absPos(p);
+      const dx = (pp.x + p.w / 2) - (pos.x + n.w / 2);
+      const dy = (pp.y + p.h / 2) - (pos.y + n.h / 2);
+      rot = ` translate(${dx}px, ${dy}px) rotate(${p.rotation}deg) translate(${-dx}px, ${-dy}px)` + rot;
+    }
+    if (rot) el.style.transform = rot.trim();
     if (n.selfHidden) {
       el.style.opacity = '0';
       el.style.pointerEvents = 'none';
-      el.style.transform = 'translateX(30px)';
+      el.style.transform = 'translateX(30px)' + rot;
     }
 
     // UIStroke (Border mode) digambar di luar kotak → pakai outline, bukan border
@@ -782,6 +832,17 @@ function renderRobloxPreview(nodes) {
       img.style.height = '100%';
       img.style.objectFit = 'fill';
       el.appendChild(img);
+    }
+
+    // ClipsDescendants: potong elemen di luar kotak ancestor yang clip (seperti di Roblox)
+    for (let p = idToNode[n.parentId]; p; p = idToNode[p.parentId]) {
+      if (!p.clips || p.rotation) continue;
+      const a = absPos(p);
+      // Nilai negatif = area clip lebih besar dari elemen (stroke/outline di luar kotak tetap terlihat)
+      const top = a.y - pos.y, left = a.x - pos.x;
+      const right = (pos.x + n.w) - (a.x + p.w), bottom = (pos.y + n.h) - (a.y + p.h);
+      if (top > 0 || left > 0 || right > 0 || bottom > 0) el.style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px)`;
+      break;
     }
 
     el.title = `${n.robloxClass} "${n.name}"${n.selfHidden ? ' [hidden]' : ''}`;
