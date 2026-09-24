@@ -45,6 +45,7 @@ $loggedIn = Auth::check();
       <a href="<?= url('ytmp3') ?>"><span>05</span>YT → MP3</a>
       <a href="<?= url('spoofer') ?>"><span>06</span>Auto Spoof</a>
       <a href="<?= url('history') ?>"><span>07</span>Riwayat</a>
+      <a href="<?= url('luaobf') ?>"><span>08</span>Lua Obfuscator</a>
     <?php else: ?>
       <a href="<?= url('login') ?>" data-no-spa><span>05</span>Masuk</a>
     <?php endif; ?>

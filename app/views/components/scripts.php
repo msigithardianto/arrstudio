@@ -21,6 +21,7 @@ $scripts = [
     'js/pages/spoofer.js',
     'js/pages/ytmp3.js',
     'js/pages/history.js',
+    'js/pages/luaobf.js',
     'js/core/spa.js',
 ];
 ?>

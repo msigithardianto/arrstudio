@@ -13,6 +13,7 @@ $router->get('prompt',    'PromptController@index');
 $router->get('spoofer',   'SpooferController@index', ['auth']);
 $router->get('ytmp3',     'YtMp3Controller@index',   ['auth']);
 $router->get('history',   'HistoryController@index', ['auth']);
+$router->get('luaobf',    'LuaObfController@index',   ['auth']);
 
 // ============================================================
 // AUTH
