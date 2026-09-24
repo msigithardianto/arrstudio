@@ -94,6 +94,52 @@ class RobloxAssetService
         throw new RuntimeException('Gagal download aset ' . $assetId . ': ' . $cloudError);
     }
 
+    /**
+     * Normalisasi scope introspect ke bentuk "asset:read" / "legacy-asset:manage".
+     * Roblox bisa mengirim: ["asset:read"], [{name:"asset", operations:["read"]}],
+     * [{name:"assets", operations:["asset:read"]}], [{scopeType:"asset:read"}], dst.
+     * @return list<string>
+     */
+    private static function parseScopes($scopes): array
+    {
+        $norm = static function (string $name): string {
+            $name = strtolower(trim($name));
+            return preg_replace('/s$/', '', $name); // "assets" → "asset", "legacy-assets" → "legacy-asset"
+        };
+        $full = static function (string $name, string $op) use ($norm): string {
+            $op = strtolower(trim($op));
+            if (str_contains($op, ':')) {
+                [$n, $o] = explode(':', $op, 2);
+                return $norm($n) . ':' . $o;
+            }
+            return $norm($name) . ':' . $op;
+        };
+
+        $ops = [];
+        foreach ((array)$scopes as $scope) {
+            if (is_string($scope)) {
+                if (str_contains($scope, ':')) {
+                    $ops[] = $full('', $scope);
+                }
+                continue;
+            }
+            if (!is_array($scope)) {
+                continue;
+            }
+            $name = (string)($scope['name'] ?? $scope['scopeType'] ?? $scope['type'] ?? '');
+            $list = (array)($scope['operations'] ?? $scope['permissions'] ?? []);
+            if (!$list && str_contains($name, ':')) {
+                $ops[] = $full('', $name);
+            }
+            foreach ($list as $op) {
+                if (is_string($op) && $op !== '') {
+                    $ops[] = $full($name, $op);
+                }
+            }
+        }
+        return array_values(array_unique($ops));
+    }
+
     /** Ambil URL file dari balasan asset delivery (v1: location, v2: locations[]) */
     private static function pickLocation(array $json): ?string
     {
@@ -119,6 +165,8 @@ class RobloxAssetService
             $status === 403                               => 'API key tidak diizinkan (cek Accepted IP & scope legacy-asset:manage).',
             $status === 404                               => 'Asset ID tidak ditemukan.',
             $status === 429                               => 'Kena rate limit Roblox, turunkan kecepatan / coba lagi nanti.',
+            stripos($msg, 'not authorized') !== false     => 'Aset ini bukan milik pemilik API key. Open Cloud hanya bisa download aset milikmu sendiri '
+                                                           . '(aset grup → API key harus dibuat dari grup itu). Cek juga: yang diisi Asset ID, bukan User ID.',
             stripos($msg, 'not approved') !== false       => 'Aset masih di-review / ditolak moderasi, atau pemilik aset beda dengan pemilik API key '
                                                            . '(aset grup harus pakai API key yang dibuat dari grup itu).',
             default                                       => '',
@@ -146,18 +194,9 @@ class RobloxAssetService
         }
         $introspected = $res['status'] === 200;
 
-        // scopes: [{name:"legacy-assets", operations:["legacy-asset:manage"]}] atau ["asset:read", ...]
-        $ops = [];
-        foreach ((array)($json['scopes'] ?? []) as $scope) {
-            if (is_string($scope)) {
-                $ops[] = $scope;
-                continue;
-            }
-            foreach ((array)($scope['operations'] ?? []) as $op) {
-                $ops[] = (string)$op;
-            }
-        }
-        $missing = $introspected ? array_values(array_diff(self::REQUIRED_OPS, $ops)) : [];
+        $ops     = self::parseScopes($json['scopes'] ?? []);
+        // Format scope tidak dikenali → jangan klaim "belum ada", tes download yang menentukan
+        $missing = $introspected && $ops ? array_values(array_diff(self::REQUIRED_OPS, $ops)) : [];
 
         $asset = null;
         if ($testAssetId !== null) {
@@ -180,7 +219,8 @@ class RobloxAssetService
             'userId'  => isset($json['authorizedUserId']) ? (string)$json['authorizedUserId'] : null,
             'enabled' => $enabled,
             'expired' => $expired,
-            'scopes'  => array_values(array_unique($ops)),
+            'scopes'  => $ops,
+            'rawScopes' => ($missing || !$ops) ? ($json['scopes'] ?? null) : null, // bantu debug kalau format beda
             'missing' => $missing,
             'asset'   => $asset,
         ];
