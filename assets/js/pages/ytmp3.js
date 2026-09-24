@@ -26,6 +26,7 @@
   const POLL_MS   = 2000;
   const POLL_MAX  = 60;
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+  let modStop = null;   // stop() pengecek status review Roblox (ArrrModeration.watch)
   let installing = false;
 
   /* ============================================================
@@ -330,7 +331,9 @@ return AudioCompensation
       // Aset baru selalu private → link ke Creator Dashboard (bukan Creator Store, yang hanya untuk aset publik)
       return `<a href="https://create.roblox.com/dashboard/creations/store/${esc(r.assetId)}/configure" target="_blank" rel="noopener" data-no-spa title="Buka di Creator Dashboard">${esc(r.assetId)}</a>`
         + (r.granted ? ' <span class="yt-fx-tag" title="Diizinkan di game">✓ game</span>' : '')
-        + (r.name ? `<span class="yt-meta" title="Nama aset di Roblox">${esc(r.name)}</span>` : '');
+        + (r.name ? `<span class="yt-meta" title="Nama aset di Roblox">${esc(r.name)}</span>` : '')
+        + (window.ArrrModeration && (r.mod || r.modErr) ? `<span class="sp-mod">${window.ArrrModeration.badge(r.mod, r.modErr)}</span>` : '')
+        + (!r.mod && !r.modErr ? '<span class="sp-mod"><span class="sp-status run">Menunggu review…</span></span>' : '');
     }
     const text = r.status === 'err' ? r.error : (r.note || (r.status === 'run' ? 'Upload…' : 'Antri'));
     return `<span class="sp-status ${r.status}">${esc(text)}</span>`;
@@ -376,6 +379,7 @@ return AudioCompensation
     renderRows();
     renderProgress();
     renderIds();
+    renderModStatus(!!modStop);
   }
 
   function setRunning(on) {
@@ -518,6 +522,7 @@ return AudioCompensation
       }
       if (!data.assetId) throw new Error('Timeout menunggu Roblox — cek Creator Dashboard nanti');
       it.rbx = { status: 'ok', assetId: String(data.assetId), name: rbxName || '' };
+      startModWatch(rcfg.apiKey);
     } catch (e) {
       it.rbx = { status: 'err', error: e.message || 'Upload gagal' };
     }
@@ -529,6 +534,7 @@ return AudioCompensation
     if (running) return;
     const rcfg = robloxCfg();
     if (!rcfg) return;
+    if (window.ArrrModeration) window.ArrrModeration.askNotify();
     const queue = items.filter(i => i.status === 'ok' && (!i.rbx || i.rbx.status === 'err'));
     if (!queue.length) return;
     queue.forEach(it => { it.rbx = { status: 'wait' }; });
@@ -580,6 +586,55 @@ return AudioCompensation
       + (failed ? ' · gagal: ' + [...new Set(Object.values(r.failed))].join(' | ') : ''));
     showToast(`${r.granted.length}/${done.length} audio diizinkan ke game`, failed ? 'warning' : 'success', 3500);
     renderRows();
+  }
+
+  /* ============================================================
+     STATUS REVIEW — cek berkala sampai semua audio Approved / Rejected
+     ============================================================ */
+  function pendingModIds() {
+    const M = window.ArrrModeration;
+    return items.filter(i => i.rbx && i.rbx.status === 'ok' && !(M && M.isFinal(i.rbx.mod))).map(i => i.rbx.assetId);
+  }
+
+  function renderModStatus(watching) {
+    const el = $('ytModStatus');
+    if (!el) return;
+    const up = items.filter(i => i.rbx && i.rbx.status === 'ok');
+    if (!up.length) { el.textContent = ''; return; }
+    const ok  = up.filter(i => i.rbx.mod === 'Approved').length;
+    const bad = up.filter(i => i.rbx.mod === 'Rejected').length;
+    const wait = up.length - ok - bad;
+    el.textContent = `Review Roblox: ${ok} siap dipakai · ${wait} masih direview · ${bad} ditolak`
+      + (wait ? (watching ? ' — dicek otomatis tiap 30 detik' : ' — buka Riwayat Upload untuk cek lagi nanti') : '');
+  }
+
+  function startModWatch(apiKey) {
+    if (modStop || !window.ArrrModeration || !apiKey) return;
+    modStop = window.ArrrModeration.watch({
+      apiKey,
+      getIds: pendingModIds,
+      onUpdate: (r) => {
+        items.forEach(i => {
+          if (!i.rbx || i.rbx.status !== 'ok') return;
+          const id = i.rbx.assetId;
+          if (r.states[id]) { i.rbx.mod = r.states[id]; i.rbx.modErr = ''; }
+          else if (r.errors[id]) i.rbx.modErr = r.errors[id];
+        });
+        renderRows();
+        renderModStatus(true);
+      },
+      onDone: (allFinal) => {
+        modStop = null;
+        renderModStatus(false);
+        const up = items.filter(i => i.rbx && i.rbx.status === 'ok');
+        if (allFinal && up.length) {
+          const ok = up.filter(i => i.rbx.mod === 'Approved').length;
+          showToast(`Review selesai: ${ok}/${up.length} audio siap dipakai`, ok === up.length ? 'success' : 'warning', 5000);
+          window.ArrrModeration.notify('ARRR Studio — review selesai', `${ok}/${up.length} audio siap dipakai di Roblox`);
+        }
+      },
+    });
+    renderModStatus(true);
   }
 
   function toastUploads() {
@@ -690,6 +745,7 @@ return AudioCompensation
     }
     const roblox = uploadCfgForRun();
     if (roblox === false) return;
+    if (roblox && window.ArrrModeration) window.ArrrModeration.askNotify();
 
     const max  = window.__ytmp3MaxBatch || 50;
     const seen = new Set();
@@ -738,6 +794,7 @@ return AudioCompensation
     if (!failed.length) return;
     const roblox = uploadCfgForRun();
     if (roblox === false) return;
+    if (roblox && window.ArrrModeration) window.ArrrModeration.askNotify();
     failed.forEach(it => { it.status = 'wait'; it.error = ''; it.rbx = null; });
     runQueue(failed, roblox);
   }

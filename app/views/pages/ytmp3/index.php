@@ -232,6 +232,7 @@ $maxMinutes = intdiv((int)config('app.ytmp3.max_duration', 1800), 60);
           <button type="button" class="sp-btn-ghost" id="ytGrant">Izinkan semua ke game</button>
         </div>
         <p class="sp-hint" id="ytGrantStatus"></p>
+        <p class="sp-hint" id="ytModStatus"></p>
         <textarea id="ytIds" class="sp-input sp-textarea sp-output" readonly spellcheck="false"></textarea>
       </div>
     </section>

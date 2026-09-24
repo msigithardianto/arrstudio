@@ -72,11 +72,15 @@
     } catch (e) {
       all = [];
       $('hsCount').textContent = 'Gagal memuat riwayat: ' + e.message;
-      $('hsRows').innerHTML = '<tr class="sp-empty"><td colspan="6">—</td></tr>';
+      $('hsRows').innerHTML = '<tr class="sp-empty"><td colspan="7">—</td></tr>';
       return;
     }
     render();
-    if (!skipPending) resolvePending();
+    if (!skipPending) {
+      resolvePending();
+      const stale = all.filter(e => e.assetId && e.moderation !== 'Approved' && e.moderation !== 'Rejected').map(e => e.assetId);
+      if (stale.length) checkModeration(stale.slice(0, 50), true);
+    }
   }
 
   /* ============================================================
@@ -86,7 +90,9 @@
     const q    = $('hsSearch').value.trim().toLowerCase();
     const src  = $('hsSource').value;
     const game = $('hsGame').value;
+    const mod  = $('hsMod').value;
     return all.filter(e => {
+      if (mod && (e.moderation || (e.assetId ? 'Reviewing' : '')) !== mod) return false;
       if (src && e.source !== src) return false;
       if (game === 'yes' && !(e.games || []).length) return false;
       if (game === 'no' && (e.games || []).length) return false;
@@ -123,6 +129,37 @@
     return `<a href="https://create.roblox.com/dashboard/creations/store/${esc(e.assetId)}/configure" target="_blank" rel="noopener" data-no-spa title="Buka di Creator Dashboard">${esc(e.assetId)}</a>`;
   }
 
+  function modCell(e) {
+    if (!e.assetId) return '—';
+    const M = window.ArrrModeration;
+    const badge = M ? M.badge(e.moderation || 'Reviewing', '') : esc(e.moderation || '');
+    return e.moderation ? badge : '<span class="sp-status run">Belum dicek</span>';
+  }
+
+  /** Cek status review ke Roblox. ids = asset ID; silent = tanpa toast (auto saat buka halaman) */
+  let checkingMod = false;
+  async function checkModeration(ids, silent) {
+    const apiKey = $('hsApiKey') ? $('hsApiKey').value.trim() : '';
+    if (!ids.length) { if (!silent) showToast('Tidak ada asset ID untuk dicek', 'warning'); return; }
+    if (!apiKey) { if (!silent) { $('hsApiKey').focus(); showToast('Isi API key Roblox dulu (bagian Aksi)', 'error'); } return; }
+    if (checkingMod || !window.ArrrModeration) return;
+    checkingMod = true;
+    if ($('hsModCheck')) $('hsModCheck').disabled = true;
+    $('hsCount').textContent = `Mengecek status review ${ids.length} aset…`;
+    const r = await window.ArrrModeration.check(apiKey, ids.slice(0, 100));
+    checkingMod = false;
+    if (!$('hsModCheck')) return;   // pindah halaman (SPA)
+    $('hsModCheck').disabled = false;
+    const n = Object.keys(r.states).length;
+    const failed = Object.keys(r.errors).length;
+    if (!silent || failed) {
+      showToast(failed
+        ? `${n} dicek, ${failed} gagal: ${[...new Set(Object.values(r.errors))][0]}`
+        : `${n} aset dicek`, failed ? 'warning' : 'success', 4000);
+    }
+    await load(true);   // status disimpan server ke riwayat
+  }
+
   function render() {
     if (!$('hsRows')) return;
     const list = filtered();
@@ -135,9 +172,10 @@
         <td class="hs-name">${esc(e.name || '—')}</td>
         <td class="hs-src">${sourceCell(e)}</td>
         <td class="hs-asset">${assetCell(e)}</td>
+        <td>${modCell(e)}</td>
         <td class="hs-game ${(e.games || []).length ? '' : 'none'}">${(e.games || []).length ? '✓ ' + esc(e.games.join(', ')) : '—'}</td>
       </tr>`).join('')
-      : `<tr class="sp-empty"><td colspan="6">${all.length ? 'Tidak ada yang cocok dengan filter.' : 'Belum ada upload. Upload lewat Auto Spoof / YT → MP3 akan tercatat di sini.'}</td></tr>`;
+      : `<tr class="sp-empty"><td colspan="7">${all.length ? 'Tidak ada yang cocok dengan filter.' : 'Belum ada upload. Upload lewat Auto Spoof / YT → MP3 akan tercatat di sini.'}</td></tr>`;
 
     $('hsMore').hidden = list.length <= limit;
     $('hsMore').textContent = `Tampilkan lebih banyak (${list.length - shown.length} lagi)`;
@@ -266,7 +304,7 @@
 
     if (root.dataset.loggedIn !== '1') {
       $('hsCount').textContent = 'Login untuk melihat riwayat.';
-      $('hsRows').innerHTML = '<tr class="sp-empty"><td colspan="6">—</td></tr>';
+      $('hsRows').innerHTML = '<tr class="sp-empty"><td colspan="7">—</td></tr>';
       return;
     }
 
@@ -274,6 +312,8 @@
     $('hsSearch').addEventListener('input', rerender);
     $('hsSource').addEventListener('change', rerender);
     $('hsGame').addEventListener('change', rerender);
+    $('hsMod').addEventListener('change', rerender);
+    $('hsModCheck').addEventListener('click', () => checkModeration(targets().filter(e => e.assetId).map(e => e.assetId), false));
     $('hsRefresh').addEventListener('click', () => load());
     $('hsMore').addEventListener('click', () => { limit += PAGE; render(); });
 

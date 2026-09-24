@@ -183,6 +183,8 @@
 .sp-status.run   { color: var(--ds-warn); }
 .sp-status.ok    { color: var(--ds-ok); }
 .sp-status.err   { color: var(--ds-err); }
+.sp-status.warn  { color: var(--ds-text-3); }
+.sp-mod { display: block; margin-top: 2px; font-size: 11px; }
 
 .sp-output-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 .sp-output-head .sp-label { margin: 0 6px 0 0; }

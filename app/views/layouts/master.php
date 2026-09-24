@@ -38,6 +38,9 @@
 
 <?= $content ?>
 
+<?php // Di luar <main> → tetap ada saat navigasi SPA (yang hanya swap header & main) ?>
+<?php View::component('toast'); ?>
+
 <?php View::component('scripts'); ?>
 
 </body>

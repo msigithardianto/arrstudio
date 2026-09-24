@@ -11,6 +11,8 @@
 //            nama dipendekkan otomatis (RobloxAssetService::shortName, default 30 karakter)
 //            → upload langsung hasil YT → MP3 (file sudah di server, tanpa download/upload ulang)
 //
+// POST JSON  {action:"moderation", apiKey, assetIds:[...]} → {states:{id: Reviewing|Approved|Rejected}, errors:{id: pesan}}
+//            status review Roblox (maks 25 aset per request), ikut disimpan ke riwayat
 // POST JSON  {action:"history"}                     → {items:[...]} riwayat upload (UploadHistory)
 // POST JSON  {action:"history_delete", ids:[...]|all:true} → hapus dari riwayat (aset di Roblox tetap ada)
 //
@@ -111,6 +113,18 @@ class SpoofApiController extends ApiController
                     $granted = $service->grantUniverse($universeId, $ids);
                     $this->record(fn() => $history->markGranted($granted['universeId'], $granted['granted']));
                     $this->json($granted);
+
+                case 'moderation':
+                    $ids = array_values(array_unique(array_filter(
+                        array_map('strval', (array)($input['assetIds'] ?? [])),
+                        fn($id) => preg_match('/^\d{1,20}$/', $id)
+                    )));
+                    if (!$ids) {
+                        $this->error('Tidak ada asset ID yang valid');
+                    }
+                    $result = $service->moderation(array_slice($ids, 0, 25));
+                    $this->record(fn() => $history->setModeration($result['states']));
+                    $this->json($result);
 
                 case 'ytmp3':
                     [$creatorType, $creatorId] = $this->creator($input);

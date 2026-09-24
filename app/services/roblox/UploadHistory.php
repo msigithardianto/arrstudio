@@ -6,7 +6,8 @@
 // aset di Roblox — hanya dari daftar riwayat.
 //
 // Entry: {id, assetId|null, operationId|null, name, source: ytmp3|reupload|file, ref,
-//         kind, creatorType, creatorId, games: [universeId], createdAt}
+//         kind, creatorType, creatorId, games: [universeId], moderation?: Reviewing|Approved|Rejected,
+//         moderationCheckedAt?, createdAt}
 
 class UploadHistory
 {
@@ -90,6 +91,28 @@ class UploadHistory
             foreach ($list as &$e) {
                 if (!empty($e['assetId']) && isset($set[$e['assetId']]) && !in_array($universeId, $e['games'] ?? [], true)) {
                     $e['games'][] = $universeId;
+                    $changed = true;
+                }
+            }
+            unset($e);
+            return [$list, $changed];
+        });
+    }
+
+    /** Simpan status review Roblox. $states = [assetId => Reviewing|Approved|Rejected] */
+    public function setModeration(array $states): void
+    {
+        if (!$states) {
+            return;
+        }
+        $now = date('c');
+        $this->locked(function (array $list) use ($states, $now) {
+            $changed = false;
+            foreach ($list as &$e) {
+                $id = $e['assetId'] ?? null;
+                if ($id !== null && isset($states[$id])) {
+                    $e['moderation']          = $states[$id];
+                    $e['moderationCheckedAt'] = $now;
                     $changed = true;
                 }
             }
