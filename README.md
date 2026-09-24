@@ -9,6 +9,10 @@ cp .env.example .env              # isi kredensial OAuth Google / Discord
 php -S localhost:8000 server.php  # dev server (meniru .htaccess)
 ```
 
+Fitur **YT → MP3** butuh [`yt-dlp`](https://github.com/yt-dlp/yt-dlp) dan `ffmpeg` di server
+(mis. `pip install -U yt-dlp` + `apt install ffmpeg`). Kalau tidak ada di PATH, isi `YTDLP_BIN` / `FFMPEG_BIN` di `.env`.
+Batas durasi, jumlah link, dan TTL file ada di `app/config/app.php` → `ytmp3`.
+
 Di Apache (XAMPP dll.) cukup taruh folder project di `htdocs`; `.htaccess` sudah menangani pretty URL (`/docs`, `/converter`, ...).
 
 ## Struktur
@@ -20,6 +24,7 @@ api/
   convert.php              POST HTML → node tree     (ConvertApiController)
   generate.php             POST node tree → Lua/rbxmx (GenerateApiController)
   spoof.php                Auto Spoof: re-upload aset via Open Cloud (SpoofApiController)
+  ytmp3.php                YT → MP3 massal + Audio Enhancement speed/pitch (YtMp3ApiController)
 app/
   bootstrap.php            konstanta path, autoload, .env, session
   config/
@@ -33,6 +38,7 @@ app/
   services/
     auth/                  Auth (session), UserRepository (storage/users.json), OAuthService
     converter/             HtmlParser (HTML → node), NodeNamer (penamaan node)
+    media/                 YoutubeMp3Service (yt-dlp + ffmpeg, speed/pitch)
     generators/            LuaGenerator, FullScriptGenerator, RbxmxGenerator, PluginGenerator, BillboardGenerator
     ExportService.php      gabungkan semua output generator
     GuestLimiter.php       kuota converter untuk guest
