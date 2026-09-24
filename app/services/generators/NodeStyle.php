@@ -62,7 +62,8 @@ class NodeStyle
                 'L' => (int)($n['padL'] ?? 0), 'R' => (int)($n['padR'] ?? 0),
                 'T' => (int)($n['padT'] ?? 0), 'B' => (int)($n['padB'] ?? 0),
             ];
-            if (array_sum($pad) > 0) $padding = $pad;
+            // Container ber-layout: padding diatur oleh layout (hindari 2 UIPadding)
+            if (array_sum($pad) > 0 && empty($n['layout'])) $padding = $pad;
         }
 
         return [

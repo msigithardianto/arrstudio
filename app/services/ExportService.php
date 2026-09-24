@@ -24,9 +24,12 @@ class ExportService
 
         // 3. Bentuk CSS tanpa padanan langsung (border di dalam kotak, border sebagian, radius sebagian)
         $nodes = ShapeFixer::apply($nodes);
-        $previewNodes = $nodes;   // posisi asli di canvas desain (untuk preview Roblox di web)
+        $previewNodes = $nodes;
 
-        // 4. Bingkai UI: root dirapatkan ke (0,0), ScreenGui & container diberi nama sesuai UI
+        // 4. Flex/grid yang terverifikasi → UIListLayout / UIGridLayout
+        $nodes = $this->applyLayouts($nodes);   // posisi asli di canvas desain (untuk preview Roblox di web)
+
+        // 5. Bingkai UI: root dirapatkan ke (0,0), ScreenGui & container diberi nama sesuai UI
         [$nodes, $width, $height, $ui] = $this->frameUi($nodes, $width, $height);
 
         $logic = GameLogicGenerator::generate($nodes, $spec, $ui);
@@ -46,6 +49,22 @@ class ExportService
             'ui'           => $ui,
             'nodes'        => $previewNodes,
         ];
+    }
+
+    private function applyLayouts(array $nodes): array
+    {
+        $children = [];
+        foreach ($nodes as $i => $n) $children[$n['parentId'] ?? 0][] = $i;
+
+        foreach ($nodes as $i => $n) {
+            $kidIdx = $children[$n['id']] ?? [];
+            if (!$kidIdx) continue;
+            $layout = LayoutDetector::detect($n, array_map(fn($k) => $nodes[$k], $kidIdx));
+            if ($layout === null) continue;
+            $nodes[$i]['layout'] = $layout;
+            foreach ($kidIdx as $order => $k) $nodes[$k]['layoutOrder'] = $order + 1;
+        }
+        return $nodes;
     }
 
     private function promoteClickables(array $nodes, array $spec): array

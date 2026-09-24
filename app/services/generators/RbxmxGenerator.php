@@ -101,6 +101,7 @@ class RbxmxGenerator {
             $p('<int name="BorderSizePixel">0</int>');
             if ($st['clips'])          $p('<bool name="ClipsDescendants">true</bool>');
             if (!empty($n['selfHidden'])) $p('<bool name="Visible">false</bool>');
+            if (!empty($n['layoutOrder'])) $p('<int name="LayoutOrder">' . (int)$n['layoutOrder'] . '</int>');
 
             if ($t = $st['text']) {
                 $f = $t['font'];
@@ -138,6 +139,34 @@ class RbxmxGenerator {
 
             if ($isContainer) {
                 $modifier('UIScale', ['<float name="Scale">1</float>']);
+            }
+
+            if ($lay = $n['layout'] ?? null) {
+                if ($lay['type'] === 'grid') {
+                    $modifier('UIGridLayout', [
+                        "<UDim2 name=\"CellSize\"><XS>0</XS><XO>{$lay['cell'][0]}</XO><YS>0</YS><YO>{$lay['cell'][1]}</YO></UDim2>",
+                        "<UDim2 name=\"CellPadding\"><XS>0</XS><XO>{$lay['gap'][0]}</XO><YS>0</YS><YO>{$lay['gap'][1]}</YO></UDim2>",
+                        "<int name=\"FillDirectionMaxCells\">{$lay['maxCols']}</int>",
+                        '<token name="SortOrder">2</token>',
+                    ]);
+                } else {
+                    $modifier('UIListLayout', [
+                        '<token name="FillDirection">' . ($lay['direction'] === 'Vertical' ? 1 : 0) . '</token>',
+                        "<UDim name=\"Padding\"><S>0</S><O>{$lay['gap']}</O></UDim>",
+                        '<token name="HorizontalAlignment">' . ['Center' => 0, 'Left' => 1, 'Right' => 2][$lay['hAlign']] . '</token>',
+                        '<token name="VerticalAlignment">' . ['Center' => 0, 'Top' => 1, 'Bottom' => 2][$lay['vAlign']] . '</token>',
+                        '<token name="SortOrder">2</token>',
+                    ]);
+                }
+                $lp = $lay['padding'];
+                if (array_sum($lp) > 0) {
+                    $modifier('UIPadding', [
+                        "<UDim name=\"PaddingLeft\"><S>0</S><O>{$lp['L']}</O></UDim>",
+                        "<UDim name=\"PaddingTop\"><S>0</S><O>{$lp['T']}</O></UDim>",
+                        "<UDim name=\"PaddingRight\"><S>0</S><O>{$lp['R']}</O></UDim>",
+                        "<UDim name=\"PaddingBottom\"><S>0</S><O>{$lp['B']}</O></UDim>",
+                    ]);
+                }
             }
 
             if ($st['cornerRadius'] > 0) {

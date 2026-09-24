@@ -134,6 +134,11 @@ class FullScriptGenerator {
                 if ($n['robloxClass'] === 'TextButton') $L[] = "{$v}.AutoButtonColor = false";
             }
 
+            if (!empty($n['layoutOrder'])) $L[] = "{$v}.LayoutOrder = {$n['layoutOrder']}";
+            if (!empty($n['layout'])) {
+                foreach (self::layoutLines($v, $n['layout']) as $line) $L[] = $line;
+            }
+
             if ($p = $st['padding']) {
                 $L[] = 'do';
                 $L[] = "    local _p = Instance.new(\"UIPadding\")";
@@ -465,6 +470,36 @@ class FullScriptGenerator {
         $L[] = '    camera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale)';
         $L[] = 'end';
         $L[] = '';
+        return $L;
+    }
+
+    /** UIListLayout / UIGridLayout + UIPadding dari LayoutDetector */
+    private static function layoutLines(string $v, array $lay): array {
+        $L = ['do'];
+        if ($lay['type'] === 'grid') {
+            $L[] = '    local _l = Instance.new("UIGridLayout")';
+            $L[] = "    _l.CellSize = UDim2.new(0, {$lay['cell'][0]}, 0, {$lay['cell'][1]})";
+            $L[] = "    _l.CellPadding = UDim2.new(0, {$lay['gap'][0]}, 0, {$lay['gap'][1]})";
+            $L[] = "    _l.FillDirectionMaxCells = {$lay['maxCols']}";
+        } else {
+            $L[] = '    local _l = Instance.new("UIListLayout")';
+            $L[] = "    _l.FillDirection = Enum.FillDirection.{$lay['direction']}";
+            $L[] = "    _l.Padding = UDim.new(0, {$lay['gap']})";
+            $L[] = "    _l.HorizontalAlignment = Enum.HorizontalAlignment.{$lay['hAlign']}";
+            $L[] = "    _l.VerticalAlignment = Enum.VerticalAlignment.{$lay['vAlign']}";
+        }
+        $L[] = '    _l.SortOrder = Enum.SortOrder.LayoutOrder';
+        $L[] = "    _l.Parent = {$v}";
+        $p = $lay['padding'];
+        if (array_sum($p) > 0) {
+            $L[] = '    local _lp = Instance.new("UIPadding")';
+            $L[] = "    _lp.PaddingLeft = UDim.new(0, {$p['L']})";
+            $L[] = "    _lp.PaddingTop = UDim.new(0, {$p['T']})";
+            $L[] = "    _lp.PaddingRight = UDim.new(0, {$p['R']})";
+            $L[] = "    _lp.PaddingBottom = UDim.new(0, {$p['B']})";
+            $L[] = "    _lp.Parent = {$v}";
+        }
+        $L[] = 'end';
         return $L;
     }
 }
