@@ -7,10 +7,15 @@
 // POST form  action=upload, apiKey, creatorType, creatorId, name?, file (multipart)
 // POST JSON  {action:"grant", apiKey, universeId, assetIds:[...]} → izinkan aset dipakai di game (maks 200)
 //            → {granted:[...], failed:{id: alasan}}
-// POST JSON  {action:"ytmp3", apiKey, creatorType, creatorId, token, name?}
+// POST JSON  {action:"ytmp3", apiKey, creatorType, creatorId, token, name?, nameMax?}
+//            nama dipendekkan otomatis (RobloxAssetService::shortName, default 30 karakter)
 //            → upload langsung hasil YT → MP3 (file sudah di server, tanpa download/upload ulang)
 //
+// POST JSON  {action:"history"}                     → {items:[...]} riwayat upload (UploadHistory)
+// POST JSON  {action:"history_delete", ids:[...]|all:true} → hapus dari riwayat (aset di Roblox tetap ada)
+//
 // Balasan sukses: {assetId} atau {operationId} (belum selesai → JS panggil "status")
+// Tiap upload yang berhasil dicatat otomatis di riwayat user.
 
 class SpoofApiController extends ApiController
 {
@@ -27,6 +32,23 @@ class SpoofApiController extends ApiController
         $isMultipart = str_starts_with($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data');
         $input       = $isMultipart ? $_POST : (Request::json() ?? []);
         $action      = (string)($input['action'] ?? '');
+        $history     = new UploadHistory($owner);
+
+        // Riwayat tidak butuh API key
+        try {
+            if ($action === 'history') {
+                $this->json(['items' => $history->all()]);
+            }
+            if ($action === 'history_delete') {
+                $ids = array_values(array_filter(array_map('strval', (array)($input['ids'] ?? [])), fn($id) => preg_match('/^[a-f0-9]{12}$/', $id)));
+                if (!$ids && empty($input['all'])) {
+                    $this->error('Pilih riwayat yang mau dihapus');
+                }
+                $this->json(['deleted' => $history->delete($ids)]);
+            }
+        } catch (Throwable $e) {
+            $this->error($e->getMessage());
+        }
 
         $apiKey = trim((string)($input['apiKey'] ?? ''));
         if ($apiKey === '' || strlen($apiKey) > 2000) {
@@ -43,7 +65,11 @@ class SpoofApiController extends ApiController
                     if (!preg_match('/^[A-Za-z0-9_-]{1,128}$/', $opId)) {
                         $this->error('operationId tidak valid');
                     }
-                    $this->json($service->operation($opId));
+                    $result = $service->operation($opId);
+                    if (!empty($result['assetId'])) {
+                        $this->record(fn() => $history->resolveOperation($opId, (string)$result['assetId']));
+                    }
+                    $this->json($result);
 
                 case 'check':
                     $testId = trim((string)($input['assetId'] ?? ''));
@@ -61,6 +87,10 @@ class SpoofApiController extends ApiController
                     $file   = $service->download($assetId);
                     $name   = trim((string)($input['name'] ?? '')) ?: 'Asset ' . $assetId;
                     $result = $service->uploadAndWait($file['bytes'], $name, $creatorType, $creatorId);
+                    $this->record(fn() => $history->add($result, [
+                        'name' => $name, 'source' => 'reupload', 'ref' => $assetId,
+                        'creatorType' => $creatorType, 'creatorId' => $creatorId,
+                    ]));
                     $this->json($result + ['sourceId' => $file['sourceId']]);
 
                 case 'grant':
@@ -78,7 +108,9 @@ class SpoofApiController extends ApiController
                     if (count($ids) > 200) {
                         $this->error('Maks 200 aset sekali proses');
                     }
-                    $this->json($service->grantUniverse($universeId, $ids));
+                    $granted = $service->grantUniverse($universeId, $ids);
+                    $this->record(fn() => $history->markGranted($universeId, $granted['granted']));
+                    $this->json($granted);
 
                 case 'ytmp3':
                     [$creatorType, $creatorId] = $this->creator($input);
@@ -88,7 +120,12 @@ class SpoofApiController extends ApiController
                     }
                     $bytes  = (string)file_get_contents($file['path']);
                     $name   = trim((string)($input['name'] ?? '')) ?: pathinfo($file['filename'], PATHINFO_FILENAME);
-                    $result = $service->uploadAndWait($bytes, $name, $creatorType, $creatorId);
+                    $name   = RobloxAssetService::shortName($name, (int)($input['nameMax'] ?? 30));
+                    $result = $service->uploadAndWait($bytes, $name, $creatorType, $creatorId) + ['name' => $name];
+                    $this->record(fn() => $history->add($result, [
+                        'name' => $name, 'source' => 'ytmp3', 'ref' => (string)($input['videoId'] ?? ''), 'kind' => 'audio',
+                        'creatorType' => $creatorType, 'creatorId' => $creatorId,
+                    ]));
                     $this->json($result);
 
                 case 'upload':
@@ -103,6 +140,10 @@ class SpoofApiController extends ApiController
                     $bytes  = (string)file_get_contents($upload['tmp_name']);
                     $name   = trim((string)($input['name'] ?? '')) ?: pathinfo((string)$upload['name'], PATHINFO_FILENAME);
                     $result = $service->uploadAndWait($bytes, $name, $creatorType, $creatorId);
+                    $this->record(fn() => $history->add($result, [
+                        'name' => $name, 'source' => 'file', 'ref' => (string)$upload['name'],
+                        'creatorType' => $creatorType, 'creatorId' => $creatorId,
+                    ]));
                     $this->json($result);
 
                 default:
@@ -111,6 +152,16 @@ class SpoofApiController extends ApiController
         } catch (Throwable $e) {
             // Pesan saja — jangan kirim file/line (dan jangan pernah log API key)
             $this->error($e->getMessage());
+        }
+    }
+
+    /** Catat ke riwayat — gagal mencatat tidak boleh menggagalkan upload */
+    private function record(callable $fn): void
+    {
+        try {
+            $fn();
+        } catch (Throwable $e) {
+            error_log('UploadHistory: ' . $e->getMessage());
         }
     }
 

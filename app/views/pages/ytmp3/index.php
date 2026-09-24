@@ -177,7 +177,14 @@ $maxMinutes = intdiv((int)config('app.ytmp3.max_duration', 1800), 60);
             </select>
             <input type="text" id="ytCreatorId" class="sp-input" placeholder="User ID / Group ID" inputmode="numeric">
           </div>
-          <p class="sp-hint">Nama aset = judul video. Upload audio kena kuota bulanan &amp; review moderasi Roblox.</p>
+          <label class="sp-label" for="ytNameMax">Nama aset</label>
+          <select id="ytNameMax" class="sp-input sp-select">
+            <option value="20">Judul dipendekkan — maks 20 huruf</option>
+            <option value="30" selected>Judul dipendekkan — maks 30 huruf</option>
+            <option value="40">Judul dipendekkan — maks 40 huruf</option>
+            <option value="50">Judul dipendekkan — maks 50 huruf</option>
+          </select>
+          <p class="sp-hint">"(Official Video)", "[HD]", "| Channel", hashtag dll. dibuang otomatis. Upload audio kena kuota bulanan &amp; review moderasi Roblox.</p>
         </div>
         <div>
           <label class="sp-label" for="ytUniverseId">Izinkan di game (opsional)</label>

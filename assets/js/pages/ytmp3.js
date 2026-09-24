@@ -329,7 +329,8 @@ return AudioCompensation
     if (r.status === 'ok') {
       // Aset baru selalu private → link ke Creator Dashboard (bukan Creator Store, yang hanya untuk aset publik)
       return `<a href="https://create.roblox.com/dashboard/creations/store/${esc(r.assetId)}/configure" target="_blank" rel="noopener" data-no-spa title="Buka di Creator Dashboard">${esc(r.assetId)}</a>`
-        + (r.granted ? ' <span class="yt-fx-tag" title="Diizinkan di game">✓ game</span>' : '');
+        + (r.granted ? ' <span class="yt-fx-tag" title="Diizinkan di game">✓ game</span>' : '')
+        + (r.name ? `<span class="yt-meta" title="Nama aset di Roblox">${esc(r.name)}</span>` : '');
     }
     const text = r.status === 'err' ? r.error : (r.note || (r.status === 'run' ? 'Upload…' : 'Antri'));
     return `<span class="sp-status ${r.status}">${esc(text)}</span>`;
@@ -364,9 +365,9 @@ return AudioCompensation
     if (fmt === 'ids') {
       text = ok.map(i => i.rbx.assetId).join('\n');
     } else if (fmt === 'lua') {
-      text = 'return {\n' + ok.map(i => `\t[${JSON.stringify(i.label)}] = "rbxassetid://${i.rbx.assetId}",`).join('\n') + '\n}';
+      text = 'return {\n' + ok.map(i => `\t[${JSON.stringify(i.rbx.name || i.label)}] = "rbxassetid://${i.rbx.assetId}",`).join('\n') + '\n}';
     } else {
-      text = ok.map(i => `rbxassetid://${i.rbx.assetId} -- ${i.label.replace(/[\r\n]+/g, ' ')}`).join('\n');
+      text = ok.map(i => `rbxassetid://${i.rbx.assetId} -- ${(i.rbx.name || i.label).replace(/[\r\n]+/g, ' ')}`).join('\n');
     }
     $('ytIds').value = text;
   }
@@ -431,6 +432,7 @@ return AudioCompensation
       }
       const own = JSON.parse(localStorage.getItem(OWN_KEY) || '{}');
       $('ytUpload').checked = !!own.upload;
+      if (own.nameMax) $('ytNameMax').value = String(own.nameMax);
     } catch (e) { /* storage diblok → abaikan */ }
     renderRobloxToggle();
   }
@@ -445,7 +447,7 @@ return AudioCompensation
       if ($('ytRemember').checked) s.apiKey = $('ytApiKey').value.trim();
       else delete s.apiKey;
       localStorage.setItem(SPOOF_KEY, JSON.stringify(s));
-      localStorage.setItem(OWN_KEY, JSON.stringify({ upload: $('ytUpload').checked }));
+      localStorage.setItem(OWN_KEY, JSON.stringify({ upload: $('ytUpload').checked, nameMax: $('ytNameMax').value }));
     } catch (e) { /* abaikan */ }
   }
 
@@ -495,14 +497,18 @@ return AudioCompensation
     it.rbx = { status: 'run' };
     renderAll();
     try {
+      let rbxName = '';
       let data = await callSpoof({
         action: 'ytmp3',
         apiKey: rcfg.apiKey,
         creatorType: rcfg.creatorType,
         creatorId: rcfg.creatorId,
         token: it.token,
+        videoId: it.videoId,
         name: it.label,
+        nameMax: parseInt($('ytNameMax').value, 10) || 30,
       });
+      rbxName = data.name || '';
       // Roblox masih memproses → polling status operasi
       for (let n = 0; !data.assetId && data.operationId && n < POLL_MAX; n++) {
         it.rbx.note = 'Menunggu Roblox…';
@@ -511,7 +517,7 @@ return AudioCompensation
         data = await callSpoof({ action: 'status', apiKey: rcfg.apiKey, operationId: data.operationId });
       }
       if (!data.assetId) throw new Error('Timeout menunggu Roblox — cek Creator Dashboard nanti');
-      it.rbx = { status: 'ok', assetId: String(data.assetId) };
+      it.rbx = { status: 'ok', assetId: String(data.assetId), name: rbxName || '' };
     } catch (e) {
       it.rbx = { status: 'err', error: e.message || 'Upload gagal' };
     }
@@ -788,6 +794,7 @@ return AudioCompensation
     $('ytIdCopy').addEventListener('click', copyIds);
     $('ytGrant').addEventListener('click', () => grantUploaded(false));
     $('ytUniverseId').addEventListener('change', saveRobloxSettings);
+    $('ytNameMax').addEventListener('change', saveRobloxSettings);
     $('ytAutoGrant').addEventListener('change', saveRobloxSettings);
     $('ytToolsUpdate').addEventListener('click', () => installTools(['ytdlp']));
     $('ytToolsRefresh').addEventListener('click', checkTools);

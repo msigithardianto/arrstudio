@@ -30,6 +30,7 @@ api/
   convert.php              POST HTML → node tree     (ConvertApiController)
   generate.php             POST node tree → Lua/rbxmx (GenerateApiController)
   spoof.php                Auto Spoof: re-upload aset via Open Cloud (SpoofApiController)
+                           + izin game massal (grant) & riwayat upload (history)
   ytmp3.php                YT → MP3 massal + Audio Enhancement speed/pitch (YtMp3ApiController);
                            upload langsung ke Roblox lewat spoof.php action "ytmp3"
 app/
@@ -47,6 +48,7 @@ app/
     converter/             HtmlParser (HTML → node), NodeNamer (penamaan node)
     media/                 YoutubeMp3Service (yt-dlp + ffmpeg, speed/pitch), MediaTools (cari/install binary), ProcessRunner
     generators/            LuaGenerator, FullScriptGenerator, RbxmxGenerator, PluginGenerator, BillboardGenerator
+    roblox/                RobloxAssetService (Open Cloud), UploadHistory (storage/history/<user>.json)
     ExportService.php      gabungkan semua output generator
     GuestLimiter.php       kuota converter untuk guest
   helpers/
