@@ -436,6 +436,51 @@ class RobloxAssetService
         return null;
     }
 
+    /** Kata "embel-embel" judul YouTube yang dibuang dari nama aset */
+    private const TITLE_NOISE = 'official|music\\s*video|video\\s*clip|video|audio|lyrics?|lirik|mv|m\\/v|hd|hq|4k|8k|\\d{3,4}p'
+        . '|visuali[sz]er|remaster(?:ed)?|explicit|clean|color\\s*coded|eng\\s*sub|sub\\s*indo|full\\s*song|official\\s*audio';
+
+    /**
+     * Nama aset pendek dari judul (mis. judul YouTube):
+     * "Artist - Song (Official Music Video) [HD] | Channel" → "Artist - Song"
+     * Buang tag [..] / 【..】, (..) yang berisi embel-embel, bagian setelah " | ",
+     * hashtag & emoji, lalu potong di batas kata maks $max karakter.
+     */
+    public static function shortName(string $title, int $max = 30): string
+    {
+        $max  = max(10, min(50, $max));
+        $name = $title;
+
+        // Bagian setelah " | " / " // " biasanya nama channel / keterangan
+        $parts = preg_split('#\s+(?:\||//)\s+#u', $name);
+        if ($parts && mb_strlen(trim($parts[0])) >= 3) {
+            $name = $parts[0];
+        }
+
+        $name = preg_replace('/\[[^\]]*\]|【[^】]*】/u', ' ', $name);                                             // tag [HD] 【MV】
+        $name = preg_replace('/[「『]([^」』]*)[」』]/u', ' $1 ', $name);                                         // 「judul」 → judul
+        $name = preg_replace('/\((?:[^()]*\b(?:' . self::TITLE_NOISE . ')\b[^()]*)\)/iu', ' ', $name);          // (Official Video)
+        $name = preg_replace('/#\S+/u', ' ', $name);                                                             // #hashtag
+        $name = preg_replace('/(?:\s+[-–—:]?\s*\b(?:' . self::TITLE_NOISE . ')\b)+\s*$/iu', '', $name);         // "... Official Video" di akhir
+
+        // Karakter yang boleh di nama Roblox, rapikan spasi & pemisah di ujung
+        $name = preg_replace('/[^\p{L}\p{N} _.\-()]/u', ' ', $name);
+        $name = preg_replace('/\(\s*\)/u', ' ', $name);
+        $name = trim(preg_replace('/\s+/u', ' ', $name), ' -._');
+
+        if (mb_strlen($name) > $max) {
+            $cut  = mb_substr($name, 0, $max + 1);
+            $pos  = mb_strrpos($cut, ' ');
+            $name = ($pos !== false && $pos >= (int)($max * 0.5)) ? mb_substr($cut, 0, $pos) : mb_substr($name, 0, $max);
+            $name = trim($name, ' -._(');
+            // Kurung buka tanpa tutup gara-gara dipotong
+            if (substr_count($name, '(') > substr_count($name, ')')) {
+                $name = trim(preg_replace('/\s*\([^)]*$/u', '', $name), ' -._');
+            }
+        }
+        return $name !== '' ? $name : 'Audio';
+    }
+
     private static function cleanName(string $name): string
     {
         $name = trim(preg_replace('/[^\p{L}\p{N} _.\-()]/u', '', $name) ?? '');

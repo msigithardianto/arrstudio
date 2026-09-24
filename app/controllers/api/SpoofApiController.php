@@ -7,7 +7,8 @@
 // POST form  action=upload, apiKey, creatorType, creatorId, name?, file (multipart)
 // POST JSON  {action:"grant", apiKey, universeId, assetIds:[...]} → izinkan aset dipakai di game (maks 200)
 //            → {granted:[...], failed:{id: alasan}}
-// POST JSON  {action:"ytmp3", apiKey, creatorType, creatorId, token, name?}
+// POST JSON  {action:"ytmp3", apiKey, creatorType, creatorId, token, name?, nameMax?}
+//            nama dipendekkan otomatis (RobloxAssetService::shortName, default 30 karakter)
 //            → upload langsung hasil YT → MP3 (file sudah di server, tanpa download/upload ulang)
 //
 // POST JSON  {action:"history"}                     → {items:[...]} riwayat upload (UploadHistory)
@@ -119,7 +120,8 @@ class SpoofApiController extends ApiController
                     }
                     $bytes  = (string)file_get_contents($file['path']);
                     $name   = trim((string)($input['name'] ?? '')) ?: pathinfo($file['filename'], PATHINFO_FILENAME);
-                    $result = $service->uploadAndWait($bytes, $name, $creatorType, $creatorId);
+                    $name   = RobloxAssetService::shortName($name, (int)($input['nameMax'] ?? 30));
+                    $result = $service->uploadAndWait($bytes, $name, $creatorType, $creatorId) + ['name' => $name];
                     $this->record(fn() => $history->add($result, [
                         'name' => $name, 'source' => 'ytmp3', 'ref' => (string)($input['videoId'] ?? ''), 'kind' => 'audio',
                         'creatorType' => $creatorType, 'creatorId' => $creatorId,
