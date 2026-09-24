@@ -18,6 +18,19 @@ class Request
         return $_POST[$key] ?? $_GET[$key] ?? $default;
     }
 
+    /**
+     * Body request JSON → array (null kalau kosong / invalid)
+     */
+    public static function json(): ?array
+    {
+        $raw = file_get_contents('php://input');
+        if ($raw === false || $raw === '') {
+            return null;
+        }
+        $data = json_decode($raw, true);
+        return is_array($data) ? $data : null;
+    }
+
     public static function method(): string
     {
         return $_SERVER['REQUEST_METHOD'] ?? 'GET';

@@ -6,11 +6,9 @@ class DocsController extends Controller
     public function index(): void
     {
         $this->render('docs/index', [
-            'pageTitle'    => 'ARRR Studio — Docs',
-            'activePage'   => 'docs',
-            'navVariant'   => 'app',
-            'extraStyles'  => ['partials/styles-docs'],
-            'extraScripts' => ['assets/docs.js'],
+            'pageTitle'  => 'ARRR Studio — Docs',
+            'activePage' => 'docs',
+            'styles'     => ['docs'],
         ]);
     }
 }

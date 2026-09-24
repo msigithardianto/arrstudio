@@ -1,29 +1,24 @@
 <?php
-// app/core/View.php
+// app/core/View.php — render page (views/pages/) di dalam layout + komponen
 
 class View
 {
-    /** Data global yang di-share ke semua view/partial */
+    /** Data yang di-share ke semua view/komponen dalam 1 request */
     private static array $shared = [];
 
     /**
-     * Render view + layout
+     * Render halaman views/pages/{$page}.php di dalam layouts/master
      */
-    public static function render(string $view, array $data = []): void
+    public static function render(string $page, array $data = []): void
     {
-        // Simpan data asli ke shared
         self::$shared = $data;
 
-        // Capture view content
-        $content = self::capture($view, $data);
-
-        // Render master dengan data + content
-        $masterData = array_merge($data, ['content' => $content]);
-        self::partial('layouts/master', $masterData);
+        $content = self::capture('pages/' . $page, $data);
+        self::partial('layouts/master', ['content' => $content]);
     }
 
     /**
-     * Capture view ke string (tanpa layout)
+     * Render file view ke string
      */
     public static function capture(string $view, array $data = []): string
     {
@@ -33,17 +28,32 @@ class View
     }
 
     /**
-     * Render partial — inherit shared data
+     * Render file views/{$view}.php — mewarisi data shared, data lokal menang
      */
     public static function partial(string $view, array $data = []): void
     {
-        // Merge: shared dulu, lokal menang
-        $vars = array_merge(self::$shared, $data);
+        extract(array_merge(self::$shared, $data), EXTR_OVERWRITE);
+        require VIEW_PATH . "/{$view}.php";
+    }
 
-        // Extract ke scope lokal
-        extract($vars, EXTR_OVERWRITE);
+    /**
+     * Render komponen reusable: views/components/{$name}.php
+     */
+    public static function component(string $name, array $data = []): void
+    {
+        self::partial('components/' . $name, $data);
+    }
 
-        // Require file
-        require BASE_PATH . "/app/views/{$view}.php";
+    /**
+     * CSS inline dengan penanda data-spa-style (dipakai spa.js untuk swap
+     * style per halaman tanpa flash). File: assets/css/{$file}.css
+     */
+    public static function style(string $id, string $file): void
+    {
+        $path = BASE_PATH . '/assets/css/' . $file . '.css';
+        if (!is_file($path)) {
+            return;
+        }
+        echo '<style data-spa-style="' . e($id) . '">' . "\n" . file_get_contents($path) . "</style>\n";
     }
 }

@@ -1,42 +1,53 @@
 <?php
-// app/bootstrap.php — bootstrap untuk semua entry point
+// app/bootstrap.php — bootstrap untuk semua entry point (index.php & api/*.php)
 
-define('BASE_PATH', dirname(__DIR__));
-define('VIEW_PATH', BASE_PATH . '/app/views');
-define('LIB_PATH',  BASE_PATH . '/app/libraries');
+define('BASE_PATH',    dirname(__DIR__));
+define('APP_PATH',     BASE_PATH . '/app');
+define('VIEW_PATH',    APP_PATH . '/views');
+define('CONFIG_PATH',  APP_PATH . '/config');
+define('STORAGE_PATH', BASE_PATH . '/storage');
 
-// Deteksi base URL (/ArrStudioWeb atau '')
+// Deteksi base URL (/ArrStudioWeb atau '') — selalu relatif ke root project,
+// jadi tetap benar walau dipanggil dari api/*.php
 $scriptDir = str_replace('\\', '/', dirname($_SERVER['SCRIPT_NAME'] ?? ''));
+if (basename($scriptDir) === 'api') {
+    $scriptDir = dirname($scriptDir);
+}
 define('BASE_URL', rtrim($scriptDir, '/'));
 
 // ============================================================
-// SESSION — HARUS START SEBELUM APAPUN
+// AUTOLOAD — cari class di folder-folder app/ (termasuk subfolder)
 // ============================================================
-if (session_status() === PHP_SESSION_NONE) {
-    // Konfigurasi cookie aman + kompatibel OAuth
-    ini_set('session.cookie_httponly', '1');
-    ini_set('session.use_only_cookies', '1');
-    ini_set('session.cookie_samesite', 'Lax');  // penting untuk OAuth redirect
+spl_autoload_register(function (string $class): void {
+    static $map = null;
 
-    // (opsional) kalau HTTPS: ini_set('session.cookie_secure', '1');
-
-    session_start();
-}
-
-// Autoload class
-spl_autoload_register(function ($class) {
-    $paths = [
-        BASE_PATH . '/app/core/'        . $class . '.php',
-        BASE_PATH . '/app/libraries/'   . $class . '.php',
-        BASE_PATH . '/app/controllers/' . $class . '.php',
-    ];
-    foreach ($paths as $file) {
-        if (file_exists($file)) {
-            require_once $file;
-            return;
+    if ($map === null) {
+        $map  = [];
+        $dirs = ['core', 'helpers', 'middleware', 'services', 'controllers'];
+        foreach ($dirs as $dir) {
+            $it = new RecursiveIteratorIterator(
+                new RecursiveDirectoryIterator(APP_PATH . '/' . $dir, FilesystemIterator::SKIP_DOTS)
+            );
+            foreach ($it as $file) {
+                if ($file->getExtension() === 'php') {
+                    $map[$file->getBasename('.php')] ??= $file->getPathname();
+                }
+            }
         }
+    }
+
+    if (isset($map[$class])) {
+        require_once $map[$class];
     }
 });
 
-// Helper global
-require_once BASE_PATH . '/app/helpers/functions.php';
+// Helper global (url, asset, e, ...)
+require_once APP_PATH . '/helpers/functions.php';
+
+// .env (opsional) → getenv()/env()
+Env::load(BASE_PATH . '/.env');
+
+// ============================================================
+// SESSION
+// ============================================================
+Auth::startSession();

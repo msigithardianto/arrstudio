@@ -1,0 +1,42 @@
+<?php
+// app/views/components/scripts.php — config global JS + semua script
+//
+// Semua script halaman dimuat sekali di sini supaya navigasi SPA
+// (yang cuma swap <header>/<main>) tetap punya semua logic-nya.
+// Tiap script halaman init sendiri via DOMContentLoaded + event 'spa:navigated'.
+//
+// Urutan PENTING:
+//   1. core/guest-limit.js → API GuestLimit
+//   2. core/layout.js      → modal, toast, navbar
+//   3. pages/*.js          → logic per halaman (butuh GuestLimit + window.__*)
+//   4. core/spa.js         → paling akhir
+$scripts = [
+    'js/core/guest-limit.js',
+    'js/core/layout.js',
+    'js/pages/landing.js',
+    'js/pages/converter.js',
+    'js/pages/library.js',
+    'js/pages/docs.js',
+    'js/pages/prompt.js',
+    'js/core/spa.js',
+];
+?>
+<script>
+window.__isLoggedIn = <?= Auth::check() ? 'true' : 'false' ?>;
+window.__oauthUrls = {
+  google:  <?= json_encode(url('auth_google')) ?>,
+  discord: <?= json_encode(url('auth_discord')) ?>,
+};
+window.__docsUrl    = <?= json_encode(url('docs')) ?>;
+window.__libraryUrl = <?= json_encode(url('library')) ?>;
+window.__loginUrl   = <?= json_encode(url('login')) ?>;
+window.__apiUrls = {
+  convert:  <?= json_encode(BASE_URL . '/api/convert.php') ?>,
+  generate: <?= json_encode(BASE_URL . '/api/generate.php') ?>,
+};
+window.__samplesUrl = <?= json_encode(BASE_URL . '/samples/') ?>;
+</script>
+
+<?php foreach ($scripts as $script): ?>
+<script src="<?= asset_v($script) ?>"></script>
+<?php endforeach; ?>
