@@ -11,7 +11,7 @@ $navItems = [
     ['id' => 'prompt',    'label' => 'Prompt',    'url' => url('prompt')],
 ];
 
-// Menu "Tools" (dropdown di desktop, section tersendiri di mobile)
+// Menu "Tools" (dropdown di desktop, section tersendiri di mobile) — hanya untuk user login
 $toolItems = [
     ['id' => 'spoofer', 'label' => 'Auto Spoof', 'desc' => 'Re-upload aset massal ke akunmu', 'url' => url('spoofer')],
     ['id' => 'ytmp3',   'label' => 'YT → MP3',   'desc' => 'Convert link YouTube + speed/pitch', 'url' => url('ytmp3')],
@@ -77,6 +77,7 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
       </a>
     <?php endforeach; ?>
 
+    <?php if (Auth::check()): /* Tools butuh login — tidak ditampilkan ke guest */ ?>
     <div class="nav-group <?= $toolsActive ? 'active' : '' ?>" id="navTools">
       <button type="button" class="top-nav-item nav-group-toggle <?= $toolsActive ? 'active' : '' ?>"
               aria-haspopup="true" aria-expanded="false" aria-controls="navToolsMenu">
@@ -94,6 +95,7 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
         <?php endforeach; ?>
       </div>
     </div>
+    <?php endif; ?>
   </nav>
 
   <!-- Right side -->

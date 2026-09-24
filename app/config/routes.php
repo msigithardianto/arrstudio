@@ -3,16 +3,16 @@
 // Middleware: 'auth' (wajib login), 'guest' (wajib belum login)
 
 // ============================================================
-// HALAMAN — bisa diakses guest
+// HALAMAN — bisa diakses guest (kecuali yang pakai 'auth')
 // ============================================================
 $router->get('landing',   'LandingController@index');
 $router->get('converter', 'ConverterController@index');
 $router->get('library',   'LibraryController@index');
 $router->get('docs',      'DocsController@index');
 $router->get('prompt',    'PromptController@index');
-$router->get('spoofer',   'SpooferController@index');
-$router->get('ytmp3',     'YtMp3Controller@index');
-$router->get('history',   'HistoryController@index');
+$router->get('spoofer',   'SpooferController@index', ['auth']);
+$router->get('ytmp3',     'YtMp3Controller@index',   ['auth']);
+$router->get('history',   'HistoryController@index', ['auth']);
 
 // ============================================================
 // AUTH

@@ -12,6 +12,9 @@ $loggedIn = Auth::check();
       <a href="<?= url('library') ?>">Library</a>
       <a href="<?= url('docs') ?>">Docs</a>
       <a href="<?= url('prompt') ?>">Prompt</a>
+      <?php if ($loggedIn): ?>
+        <a href="#lxTools" data-no-spa>Tools <sup class="lx-new">baru</sup></a>
+      <?php endif; ?>
     </nav>
 
     <a href="<?= url('landing') ?>" class="lx-logo" aria-label="ARRR Studio">
@@ -38,7 +41,11 @@ $loggedIn = Auth::check();
     <a href="<?= url('library') ?>"><span>02</span>Library</a>
     <a href="<?= url('docs') ?>"><span>03</span>Docs</a>
     <a href="<?= url('prompt') ?>"><span>04</span>Prompt</a>
-    <?php if (!$loggedIn): ?>
+    <?php if ($loggedIn): ?>
+      <a href="<?= url('ytmp3') ?>"><span>05</span>YT → MP3</a>
+      <a href="<?= url('spoofer') ?>"><span>06</span>Auto Spoof</a>
+      <a href="<?= url('history') ?>"><span>07</span>Riwayat</a>
+    <?php else: ?>
       <a href="<?= url('login') ?>" data-no-spa><span>05</span>Masuk</a>
     <?php endif; ?>
   </div>
