@@ -340,6 +340,137 @@ if _f then return _f() end`;
   }
 
   /* ============================================================
+     BEAUTIFY — tokenizer Lua yang benar → baris + indentasi.
+     Antar token SELALU dipisah spasi/newline, jadi tidak pernah menempel
+     (aman: hasil tetap kompilasi). Format hanya kosmetik.
+     ============================================================ */
+  function tokenizeLua(code) {
+    const toks = [];
+    let i = 0; const n = code.length;
+    const isDigit = (c) => c >= '0' && c <= '9';
+    const isWord = (c) => /[A-Za-z0-9_]/.test(c);
+    while (i < n) {
+      const c = code[i];
+      if (c === ' ' || c === '\t' || c === '\n' || c === '\r') { i++; continue; }
+      // komentar
+      if (c === '-' && code[i + 1] === '-') {
+        let j = i + 2;
+        if (code[j] === '[') {
+          let eq = 0, k = j + 1; while (code[k] === '=') { eq++; k++; }
+          if (code[k] === '[') { const cl = ']' + '='.repeat(eq) + ']'; const e = code.indexOf(cl, k + 1); const stop = e < 0 ? n : e + cl.length; toks.push({ t: 'comment', v: code.slice(i, stop) }); i = stop; continue; }
+        }
+        while (j < n && code[j] !== '\n') j++;
+        toks.push({ t: 'linecomment', v: code.slice(i, j) }); i = j; continue;
+      }
+      // long string
+      if (c === '[') {
+        let eq = 0, k = i + 1; while (code[k] === '=') { eq++; k++; }
+        if (code[k] === '[') { const cl = ']' + '='.repeat(eq) + ']'; const e = code.indexOf(cl, k + 1); const stop = e < 0 ? n : e + cl.length; toks.push({ t: 'string', v: code.slice(i, stop) }); i = stop; continue; }
+      }
+      // string biasa
+      if (c === '"' || c === "'") {
+        let j = i + 1; while (j < n) { if (code[j] === '\\') { j += 2; continue; } if (code[j] === c) { j++; break; } j++; }
+        toks.push({ t: 'string', v: code.slice(i, j) }); i = j; continue;
+      }
+      // angka
+      if (isDigit(c) || (c === '.' && isDigit(code[i + 1]))) {
+        let j = i;
+        if (c === '0' && (code[i + 1] === 'x' || code[i + 1] === 'X')) { j = i + 2; while (j < n && /[0-9a-fA-F.]/.test(code[j])) j++; }
+        else { while (j < n && /[0-9.]/.test(code[j])) j++; if (code[j] === 'e' || code[j] === 'E') { j++; if (code[j] === '+' || code[j] === '-') j++; while (j < n && isDigit(code[j])) j++; } }
+        toks.push({ t: 'number', v: code.slice(i, j) }); i = j; continue;
+      }
+      // nama / keyword
+      if (isWord(c)) { let j = i; while (j < n && isWord(code[j])) j++; toks.push({ t: 'word', v: code.slice(i, j) }); i = j; continue; }
+      // operator multi-char
+      const three = code.substr(i, 3);
+      if (three === '...') { toks.push({ t: 'op', v: '...' }); i += 3; continue; }
+      const two = code.substr(i, 2);
+      if (['..', '==', '~=', '<=', '>=', '::'].includes(two)) { toks.push({ t: 'op', v: two }); i += 2; continue; }
+      toks.push({ t: 'op', v: c }); i++;
+    }
+    return toks;
+  }
+
+  function beautifyLua(code) {
+    let toks;
+    try { toks = tokenizeLua(code); } catch (e) { return code; }
+    const KW = (v) => (v === 'and' || v === 'or' || v === 'not');
+    const BINOP = new Set(['+', '-', '*', '/', '%', '^', '..', '==', '~=', '<', '>', '<=', '>=', '=']);
+    const STARTER = new Set(['local', 'return', 'if', 'for', 'while', 'repeat']);
+    const identRe = /^[A-Za-z_]\w*$/;
+    let out = '', indent = 0, lineEmpty = true, prev = null;
+    let paren = 0, brace = 0; const funcStack = [];
+    const nl = () => { out = out.replace(/[ \t]+$/, '') + '\n'; lineEmpty = true; };
+    const emit = (s) => { if (lineEmpty) out += '\t'.repeat(Math.max(0, indent)); out += s; lineEmpty = false; };
+
+    function space(pt, ct) {
+      if (!pt) return false;
+      const p = pt.v, c = ct.v;
+      const atom = (x) => x.t === 'word' || x.t === 'number';
+      if (atom(pt) && atom(ct)) return true;
+      if ((atom(pt) || pt.t === 'string') && ct.t === 'string') return true;
+      if (pt.t === 'string' && atom(ct)) return true;
+      if (pt.t === 'op' && pt.v === '-' && pt.unary) return false;
+      if (ct.t === 'op' && BINOP.has(c)) return true;
+      if (pt.t === 'op' && BINOP.has(p)) return true;
+      if (KW(p) || KW(c)) return true;
+      if (p === ',') return true;
+      if (pt.t === 'op' && (p === ')' || p === ']') && (atom(ct) || ct.t === 'string')) return true;
+      return false;
+    }
+    const strContent = (v) => v.length >= 2 ? v.slice(1, -1) : '';
+
+    const CONT = new Set(['(', ')', '[', ']', '{', '}', ',', ';', '.', ':', '..']);
+    for (let x = 0; x < toks.length; x++) {
+      const tk = toks[x], v = tk.v;
+      if (tk.t === 'op' && v === '-') {
+        tk.unary = !prev || (prev.t === 'op' && prev.v !== ')' && prev.v !== ']' && prev.v !== '}') || (prev.t === 'word' && KW(prev.v));
+      }
+
+      // ["nama"] → .nama saat INDEXING (bukan key tabel, bukan keyword)
+      if (tk.t === 'op' && v === '[' && toks[x + 1] && toks[x + 1].t === 'string'
+          && toks[x + 2] && toks[x + 2].t === 'op' && toks[x + 2].v === ']') {
+        const nm = strContent(toks[x + 1].v);
+        const isKey = prev && ((prev.t === 'op' && (prev.v === '{' || prev.v === ',' || prev.v === ';' || prev.v === '(')) || prev === null);
+        const canIndex = prev && (prev.t === 'word' || prev.t === 'number' || prev.t === 'string' || (prev.t === 'op' && (prev.v === ')' || prev.v === ']')));
+        if (identRe.test(nm) && !LUA_KEYWORDS.has(nm) && !isKey && canIndex) {
+          emit('.' + nm);
+          prev = { t: 'word', v: nm };
+          x += 2;
+          continue;
+        }
+      }
+
+      // penutup blok
+      if (tk.t === 'word' && (v === 'end' || v === 'until' || v === 'elseif' || v === 'else')) { indent--; if (!lineEmpty) nl(); }
+      else if (tk.t === 'word' && STARTER.has(v) && brace === 0 && !lineEmpty && prev &&
+               !(prev.t === 'op' && (prev.v === '(' || prev.v === '=' || prev.v === ',' || prev.v === '{'))) {
+        nl();
+      }
+
+      if (!lineEmpty && space(prev, tk)) emit(' ');
+      if (tk.t === 'linecomment') { emit(v); nl(); prev = tk; continue; }
+      emit(v);
+
+      if (tk.t === 'op' && v === '(') paren++;
+      else if (tk.t === 'op' && v === ')') { paren--; if (funcStack.length && paren === funcStack[funcStack.length - 1]) { funcStack.pop(); indent++; nl(); } }
+      else if (tk.t === 'op' && v === '{') brace++;
+      else if (tk.t === 'op' && v === '}') { if (brace > 0) brace--; }
+
+      if (tk.t === 'word' && v === 'function') funcStack.push(paren);
+      else if (tk.t === 'word' && (v === 'then' || v === 'do' || v === 'repeat')) { indent++; nl(); }
+      else if (tk.t === 'word' && v === 'else') { indent++; nl(); }
+      else if (tk.t === 'op' && v === ';' && brace === 0 && paren === 0) nl();
+      if (tk.t === 'word' && (v === 'end' || v === 'until')) {
+        const nx = toks[x + 1];
+        if (nx && !(nx.t === 'op' && CONT.has(nx.v)) && !(nx.t === 'word' && (nx.v === 'end' || nx.v === 'until' || nx.v === 'elseif' || nx.v === 'else'))) nl();
+      }
+      prev = tk;
+    }
+    return out.replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  /* ============================================================
      UI
      ============================================================ */
   function setOutput(text) {
@@ -375,9 +506,11 @@ if _f then return _f() end`;
       if (looksLikeFamilyA(src)) {
         const fa = deobfFamilyA(src);
         if (fa.ok) {
-          setOutput(fa.code);
-          $('loNote').textContent = `Obfuscator string-table terdeteksi — ${fa.count} string didecode & disisipkan. `
-            + `Hasil sudah berupa Lua yang bisa dijalankan (nama variabel lokal tetap singkat).`;
+          let pretty = fa.code;
+          try { pretty = beautifyLua(fa.code); } catch (e) { pretty = fa.code; }
+          setOutput(pretty);
+          $('loNote').textContent = `Obfuscator string-table terdeteksi — ${fa.count} string didecode & dirapikan jadi `
+            + `${pretty.split('\n').length} baris. Hasil berupa Lua yang bisa dijalankan (nama variabel lokal tetap singkat).`;
           return showToast(`Berhasil deobfuscate (${fa.count} string)`, 'success', 4000);
         }
       }
