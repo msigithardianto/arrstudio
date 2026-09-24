@@ -30,6 +30,7 @@ window.__oauthUrls = {
 };
 window.__docsUrl    = <?= json_encode(url('docs')) ?>;
 window.__libraryUrl = <?= json_encode(url('library')) ?>;
+window.__converterUrl = <?= json_encode(url('converter')) ?>;
 window.__loginUrl   = <?= json_encode(url('login')) ?>;
 window.__apiUrls = {
   convert:  <?= json_encode(BASE_URL . '/api/convert.php') ?>,

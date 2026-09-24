@@ -190,6 +190,15 @@ class HtmlParser {
             $borderW = max(array_map(fn($side) => CssHelper::parsePx($style["border-{$side}-width"] ?? null) ?? 0, ['right', 'bottom', 'left']));
         }
 
+        // Border per sisi (untuk border sebagian: border-top saja, border-bottom:none, dst.)
+        $borderSides = [];
+        foreach (['top', 'right', 'bottom', 'left'] as $side) {
+            $borderSides[$side] = [
+                'w' => CssHelper::parsePx($style["border-{$side}-width"] ?? $style['border-width'] ?? null) ?? 0,
+                'c' => CssHelper::parseColor($style["border-{$side}-color"] ?? $style['border-color'] ?? $style['border-top-color'] ?? 'transparent'),
+            ];
+        }
+
         $fontSize   = CssHelper::parsePx($style['font-size'] ?? null) ?? 16;
         $lineHeight = CssHelper::parsePx($style['line-height'] ?? null) ?? (int)round($fontSize * 1.2);
 
@@ -250,6 +259,8 @@ class HtmlParser {
             'fg' => $fg,
             'borderColor' => $border,
             'borderW' => $borderW,
+            'borderSides' => $borderSides,
+            'rotation' => (float)($rect['rotation'] ?? 0),
 
             'radius' => max($radii),
             'radiusUniform' => count(array_unique($radii)) === 1,

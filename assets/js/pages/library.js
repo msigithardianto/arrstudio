@@ -131,12 +131,10 @@
      ACTIONS
      ============================================================ */
   function loadToConverter(id) {
-    localStorage.setItem('arrr_load_sample', id);
-    // Ganti '/library' di URL dengan '/converter'
-    const target = location.pathname.replace(/\/library\/?$/, '/converter');
+    try { localStorage.setItem('arrr_load_sample', id); } catch {}
+    // URL converter dari server (jalan untuk pretty URL maupun index.php?page=...)
+    const target = new URL(window.__converterUrl || 'converter', location.href).href;
 
-    // Kalau SPA aktif, dispatch custom event biar spa.js handle
-    // Kalau nggak, fallback ke location.href
     if (window.__spaNavigate) {
       window.__spaNavigate(target);
     } else {

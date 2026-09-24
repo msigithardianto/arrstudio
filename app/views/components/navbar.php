@@ -89,19 +89,23 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
 
       <div class="top-divider"></div>
 
-      <!-- Action buttons -->
+      <!-- Export: tombol berlabel supaya jelas fungsinya -->
       <div class="actions">
-        <button onclick="downloadFile('rbxmx')" class="btn btn-icon" title="Download .rbxmx">
-          <span>⬇</span>
+        <button onclick="downloadFile('rbxmx')" class="btn btn-action btn-export"
+                title="Paket lengkap untuk Roblox Studio: GUI + GameConfig + Server + Client (.rbxmx)">
+          <span class="btn-action-icon">⬇</span><span class="btn-action-label">Export .rbxmx</span>
         </button>
-        <button onclick="downloadFile('lua')" class="btn btn-icon" title="Download .lua">
-          <span>📜</span>
+        <button onclick="downloadFile('lua')" class="btn btn-action"
+                title="Full LocalScript (.lua) — bikin UI lewat script">
+          <span class="btn-action-icon">📜</span><span class="btn-action-label">Lua</span>
         </button>
-        <button onclick="openPluginModal()" class="btn btn-icon btn-gold" title="Cara pakai Plugin">
-          <span>🔌</span>
+        <button onclick="openPluginModal()" class="btn btn-action"
+                title="Download plugin + cara install ke Studio">
+          <span class="btn-action-icon">🔌</span><span class="btn-action-label">Plugin</span>
         </button>
-        <button onclick="copyCurrent()" id="copyBtn" class="btn btn-icon btn-silver" title="Copy tab aktif">
-          <span>📋</span>
+        <button onclick="copyCurrent()" id="copyBtn" class="btn btn-action"
+                title="Copy isi tab output yang sedang dibuka">
+          <span class="btn-action-icon">📋</span><span class="btn-action-label">Copy</span>
         </button>
       </div>
 

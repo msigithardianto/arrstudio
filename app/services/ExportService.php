@@ -22,7 +22,14 @@ class ExportService
         // 2. Elemen yang diklik (card item, label aksi, toggle) → TextButton di Studio
         $nodes = $this->promoteClickables($nodes, $spec);
 
-        // 3. Bingkai UI: root dirapatkan ke (0,0), ScreenGui & container diberi nama sesuai UI
+        // 3. Bentuk CSS tanpa padanan langsung (border di dalam kotak, border sebagian, radius sebagian)
+        $nodes = ShapeFixer::apply($nodes);
+        $previewNodes = $nodes;
+
+        // 4. Flex/grid yang terverifikasi → UIListLayout / UIGridLayout
+        $nodes = $this->applyLayouts($nodes);   // posisi asli di canvas desain (untuk preview Roblox di web)
+
+        // 5. Bingkai UI: root dirapatkan ke (0,0), ScreenGui & container diberi nama sesuai UI
         [$nodes, $width, $height, $ui] = $this->frameUi($nodes, $width, $height);
 
         $logic = GameLogicGenerator::generate($nodes, $spec, $ui);
@@ -31,7 +38,7 @@ class ExportService
             'script'       => LuaGenerator::generateBehaviorScript($nodes, $ui),
             'fullscript'   => FullScriptGenerator::generateFullScript($nodes, $width, $height, $ui),
             'tree'         => LuaGenerator::renderTreeText($nodes),
-            'rbxmx'        => RbxmxGenerator::generate($nodes, $width, $height, $ui),
+            'rbxmx'        => RbxmxGenerator::generate($nodes, $width, $height, $ui, $spec['actions'] || $spec['currencies'] ? $logic : []),
             'plugin'       => PluginGenerator::generate(),
             'billboard'    => BillboardGenerator::generate($billboard ?? self::DEFAULT_BILLBOARD),
             'report'       => LuaGenerator::renderReport($nodes),
@@ -40,7 +47,24 @@ class ExportService
             'client'       => $logic['client'],
             'logicSummary' => $this->logicSummary($spec),
             'ui'           => $ui,
+            'nodes'        => $previewNodes,
         ];
+    }
+
+    private function applyLayouts(array $nodes): array
+    {
+        $children = [];
+        foreach ($nodes as $i => $n) $children[$n['parentId'] ?? 0][] = $i;
+
+        foreach ($nodes as $i => $n) {
+            $kidIdx = $children[$n['id']] ?? [];
+            if (!$kidIdx) continue;
+            $layout = LayoutDetector::detect($n, array_map(fn($k) => $nodes[$k], $kidIdx));
+            if ($layout === null) continue;
+            $nodes[$i]['layout'] = $layout;
+            foreach ($kidIdx as $order => $k) $nodes[$k]['layoutOrder'] = $order + 1;
+        }
+        return $nodes;
     }
 
     private function promoteClickables(array $nodes, array $spec): array

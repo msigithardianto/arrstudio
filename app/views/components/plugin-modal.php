@@ -11,7 +11,7 @@
         <div class="plugin-modal-icon">⚡</div>
         <div>
           <div class="plugin-modal-title-main">Cara Pakai Plugin ARRR Studio</div>
-          <div class="plugin-modal-title-sub">Auto-import UI ke Roblox Studio dalam 5 langkah</div>
+          <div class="plugin-modal-title-sub">Pasang plugin sekali, lalu install GUI + script dalam 1 klik</div>
         </div>
       </div>
       <button class="plugin-modal-close" onclick="closePluginModal()">✕</button>
@@ -75,11 +75,29 @@
       <div class="plugin-step">
         <div class="plugin-step-num">5</div>
         <div class="plugin-step-content">
-          <div class="plugin-step-title">Pakai plugin</div>
+          <div class="plugin-step-title">Install GUI + Game Logic (cara utama)</div>
           <div class="plugin-step-desc">
-            Buka tab <strong>Plugins</strong> di toolbar atas → klik <strong>ARRR Studio</strong>
-            → <strong>Import UI</strong>. Widget akan muncul. Paste Lua script hasil convert
-            dari sini, lalu klik <strong>🔨 Build</strong>.
+            Di converter klik <strong>⬇ Export .rbxmx</strong>. Di Studio:
+            klik kanan <strong>Workspace → Insert from File</strong> → pilih file <code>…_ArrUIPack.rbxmx</code>.
+            Buka widget plugin → klik <strong>📦 Install Pack</strong>. Otomatis dipindah ke:
+            <ul class="plugin-install-list">
+              <li><code>StarterGui</code> — ScreenGui + behavior script</li>
+              <li><code>ReplicatedStorage › ArrUI › GameConfig</code> — harga, item, hadiah</li>
+              <li><code>ServerScriptService › ArrUIServer</code> — remote, leaderstats, validasi</li>
+              <li><code>StarterPlayerScripts › ArrUIClient</code> — tombol GUI → server</li>
+            </ul>
+            Bisa di-undo dengan <kbd>Ctrl+Z</kbd>.
+          </div>
+        </div>
+      </div>
+
+      <div class="plugin-step">
+        <div class="plugin-step-num">6</div>
+        <div class="plugin-step-content">
+          <div class="plugin-step-title">Alternatif: Build dari Lua</div>
+          <div class="plugin-step-desc">
+            Copy tab <strong>Full Lua</strong> (atau <strong>Billboard</strong>), paste di widget plugin,
+            lalu klik <strong>🔨 Build</strong> — UI langsung dibuat di StarterGui.
           </div>
         </div>
       </div>
@@ -87,18 +105,18 @@
       <div class="plugin-callout">
         <span class="plugin-callout-icon">⚠️</span>
         <div>
-          <strong>Penting:</strong> Plugin butuh <code>loadstring</code> yang cuma
-          jalan kalau <strong>Enable Studio Access to API Services</strong> diaktifkan.
-          Buka: <code>Home → Game Settings → Security</code> → centang opsi itu → Save → Restart Studio.
+          <strong>Aktifkan API Services:</strong> <code>Home → Game Settings → Security</code> →
+          centang <strong>Enable Studio Access to API Services</strong>. Dibutuhkan untuk
+          <code>loadstring</code> (Build) dan DataStore (simpan saldo/inventory pemain).
         </div>
       </div>
 
       <div class="plugin-callout" style="background: linear-gradient(90deg, rgba(96, 165, 250, 0.08), rgba(96, 165, 250, 0.02)); border-left-color: #60a5fa;">
         <span class="plugin-callout-icon">💡</span>
         <div>
-          <strong>Alternatif tanpa plugin:</strong> Pakai file <code>.rbxmx</code> —
-          download dari tombol RBXMX, lalu import manual via
-          <code>File → Import</code> di Roblox Studio. Hasilnya sama.
+          <strong>Tanpa plugin:</strong> setelah Insert from File, pindahkan manual isi tiap folder di
+          <code>ArrUIPack</code> ke service dengan nama yang sama. Petunjuknya ada di
+          <code>ArrUIPack › BacaDulu</code>.
         </div>
       </div>
 
