@@ -9,6 +9,9 @@
   </div>
 
   <div class="lx-hero-content">
+    <a href="#lxTools" class="lx-hero-badge lx-reveal" data-no-spa>
+      <b>Baru</b> YT → MP3, Auto Spoof &amp; Riwayat Upload <span>→</span>
+    </a>
     <p class="lx-eyebrow lx-reveal">ARRR Studio · HTML → Roblox</p>
     <h1 class="lx-hero-title lx-reveal">
       Desain di web.<br>

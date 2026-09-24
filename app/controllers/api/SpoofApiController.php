@@ -11,6 +11,8 @@
 //            nama dipendekkan otomatis (RobloxAssetService::shortName, default 30 karakter)
 //            → upload langsung hasil YT → MP3 (file sudah di server, tanpa download/upload ulang)
 //
+// POST JSON  {action:"public", apiKey, assetIds:[...]} → jadikan publik (gambar/decal/mesh saja, bukan audio)
+//            → {granted:[...], failed:{id: alasan}}
 // POST JSON  {action:"moderation", apiKey, assetIds:[...]} → {states:{id: Reviewing|Approved|Rejected}, errors:{id: pesan}}
 //            status review Roblox (maks 25 aset per request), ikut disimpan ke riwayat
 // POST JSON  {action:"history"}                     → {items:[...]} riwayat upload (UploadHistory)
@@ -113,6 +115,21 @@ class SpoofApiController extends ApiController
                     $granted = $service->grantUniverse($universeId, $ids);
                     $this->record(fn() => $history->markGranted($granted['universeId'], $granted['granted']));
                     $this->json($granted);
+
+                case 'public':
+                    $ids = array_values(array_unique(array_filter(
+                        array_map('strval', (array)($input['assetIds'] ?? [])),
+                        fn($id) => preg_match('/^\d{1,20}$/', $id)
+                    )));
+                    if (!$ids) {
+                        $this->error('Tidak ada asset ID yang valid');
+                    }
+                    if (count($ids) > 200) {
+                        $this->error('Maks 200 aset sekali proses');
+                    }
+                    $public = $service->grantPublic($ids);
+                    $this->record(fn() => $history->markPublic($public['granted']));
+                    $this->json($public);
 
                 case 'moderation':
                     $ids = array_values(array_unique(array_filter(

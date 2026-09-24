@@ -140,18 +140,23 @@ $isLoggedIn = Auth::check();
     <!-- ===== 4. IZIN GAME MASSAL ===== -->
     <section class="sp-card sp-grant">
       <div class="sp-results-head">
-        <h2 class="sp-card-title"><span>04</span> Izinkan aset ke game</h2>
+        <h2 class="sp-card-title"><span>04</span> Izin game &amp; publik</h2>
         <p class="sp-progress-text" id="spGrantStatus"></p>
       </div>
       <p class="sp-grant-desc">
-        Kasih izin banyak aset sekaligus supaya bisa dipakai di game kamu (tidak perlu buka Permissions satu-satu).
-        Isi <b>Universe ID</b> di card 01 (Place ID juga bisa — otomatis dikonversi). Aset &amp; game harus milik
-        akun / grup yang sama dengan API key, dan API key butuh scope <code>asset-permissions:write</code>.
+        <b>Izinkan ke game</b>: aset bisa dipakai di satu game (Universe ID). <b>Jadikan publik</b>: bisa dipakai
+        siapa saja — hanya untuk gambar / decal / mesh. Audio tidak bisa dijadikan publik lewat API; untuk audio pakai
+        <i>Distribute on Creator Store</i> di Creator Dashboard (butuh verifikasi ID).
+        Isi <b>Universe ID</b> di card 01 (Creator Dashboard → Creations → ⋯ di game → <i>Copy Universe ID</i> — bukan
+        angka di link game). Aset &amp; game harus milik akun / grup yang sama dengan API key, dan API key butuh scope
+        <code>asset-permissions:write</code>.
       </p>
       <textarea id="spGrantIds" class="sp-input sp-textarea sp-grant-ids" spellcheck="false"
         placeholder="Asset ID (satu per baris / pisah koma) — atau klik &quot;Pakai hasil di atas&quot;"></textarea>
       <div class="sp-output-head">
         <button type="button" class="sp-start sp-grant-btn" id="spGrant" <?= $isLoggedIn ? "" : "disabled" ?>>Izinkan semua ke game</button>
+        <button type="button" class="sp-btn-ghost" id="spPublic" <?= $isLoggedIn ? "" : "disabled" ?>
+                title="Siapa saja bisa pakai. Hanya gambar / decal / mesh — audio tidak bisa lewat API">Jadikan publik (gambar)</button>
         <button type="button" class="sp-btn-ghost" id="spGrantFill">Pakai hasil di atas</button>
       </div>
       <div class="sp-check-result" id="spGrantResult" hidden></div>

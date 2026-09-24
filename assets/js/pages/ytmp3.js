@@ -330,6 +330,7 @@ return AudioCompensation
     if (r.status === 'ok') {
       // Aset baru selalu private → link ke Creator Dashboard (bukan Creator Store, yang hanya untuk aset publik)
       return `<a href="https://create.roblox.com/dashboard/creations/store/${esc(r.assetId)}/configure" target="_blank" rel="noopener" data-no-spa title="Buka di Creator Dashboard">${esc(r.assetId)}</a>`
+        + (window.ArrrCopyIcon ? window.ArrrCopyIcon(r.assetId) : '')
         + (r.granted ? ' <span class="yt-fx-tag" title="Diizinkan di game">✓ game</span>' : '')
         + (r.name ? `<span class="yt-meta" title="Nama aset di Roblox">${esc(r.name)}</span>` : '')
         + (window.ArrrModeration && (r.mod || r.modErr) ? `<span class="sp-mod">${window.ArrrModeration.badge(r.mod, r.modErr)}</span>` : '')
@@ -584,6 +585,12 @@ return AudioCompensation
     status((r.placeId ? `${r.placeId} itu Place ID → pakai Universe ID ${r.universeId}. ` : '')
       + `${r.granted.length}/${done.length} audio diizinkan ke game ${r.universeId || universeId}`
       + (failed ? ' · gagal: ' + [...new Set(Object.values(r.failed))].join(' | ') : ''));
+    if (failed && window.ArrrCopyButton && $('ytGrantStatus')) {
+      $('ytGrantStatus').insertAdjacentHTML('beforeend', '<span class="sp-copy-row">'
+        + window.ArrrCopyButton(Object.keys(r.failed).join('\n'), `Copy ${failed} ID gagal`)
+        + window.ArrrCopyButton(Object.entries(r.failed).map(([id, m]) => `${id}: ${m}`).join('\n'), 'Copy pesan error')
+        + '</span>');
+    }
     showToast(`${r.granted.length}/${done.length} audio diizinkan ke game`, failed ? 'warning' : 'success', 3500);
     renderRows();
   }
