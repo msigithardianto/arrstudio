@@ -17,8 +17,8 @@
     <button data-tab="tree"       class="tab"        onclick="switchTab('tree')">Tree</button>
     <button data-tab="rbxmx"      class="tab"        onclick="switchTab('rbxmx')">RBXMX</button>
     <button data-tab="plugin"     class="tab"        onclick="switchTab('plugin')">Plugin</button>
-    <button data-tab="billboard"  class="tab"        onclick="switchTab('billboard')">👑 Billboard</button>
-    <button data-tab="server"     class="tab" data-group="logic" onclick="switchTab('server')">🧠 Game Logic</button>
+    <button data-tab="billboard"  class="tab"        onclick="switchTab('billboard')">Billboard</button>
+    <button data-tab="server"     class="tab" data-group="logic" onclick="switchTab('server')">Game Logic</button>
     <button data-tab="report"     class="tab"        onclick="switchTab('report')">Report</button>
   </div>
 
@@ -26,7 +26,7 @@
   <div id="billboardConfig" class="billboard-config hidden">
 
     <div class="bb-intro">
-      <span class="bb-intro-icon">👑</span>
+      
       <div>
         <div><strong>Billboard Nametag</strong> — script untuk nama overhead di atas kepala player.</div>
         <div class="bb-intro-sub">Ubah config di bawah, preview akan update otomatis. Klik Generate lalu Copy ke LocalScript di StarterPlayerScripts.</div>
@@ -77,7 +77,7 @@
     </div>
 
     <div class="bb-preview">
-      <div class="bb-preview-label">👁️ Live Preview</div>
+      <div class="bb-preview-label">Live Preview</div>
       <div class="bb-visual" id="bbVisual">
         <div class="bb-badges">
           <div class="bb-badge mic">🎤</div>
@@ -91,8 +91,8 @@
     </div>
 
     <div class="bb-actions">
-      <button type="button" class="bb-btn bb-btn-primary" onclick="regenerateBillboard()">⚡ Generate Billboard Script</button>
-      <button type="button" class="bb-btn bb-btn-ghost" onclick="copyBillboard()" title="Copy script">📋 Copy</button>
+      <button type="button" class="bb-btn bb-btn-primary" onclick="regenerateBillboard()">Generate Billboard</button>
+      <button type="button" class="bb-btn bb-btn-ghost" onclick="copyBillboard()" title="Copy script">Copy</button>
       <button type="button" class="bb-btn bb-btn-ghost" onclick="downloadFile('billboard')" title="Download .lua">⬇ Download</button>
     </div>
 
@@ -104,18 +104,18 @@
   </div>
 
   <div class="plugin-action-bar hidden" id="pluginActionBar">
-    <button class="plugin-action-btn" onclick="downloadFile('plugin')">⬇ Download Plugin (.lua)</button>
-    <button class="plugin-action-btn" onclick="copyCurrent()">📋 Copy Plugin Code</button>
-    <button class="plugin-action-btn ghost" onclick="openPluginModal()">❓ Cara Pakai</button>
+    <button class="plugin-action-btn" onclick="downloadFile('plugin')">Download Plugin</button>
+    <button class="plugin-action-btn" onclick="copyCurrent()">Copy Code</button>
+    <button class="plugin-action-btn ghost" onclick="openPluginModal()">Cara Pakai</button>
   </div>
 
   <!-- Game Logic: 3 file (ModuleScript / Script / LocalScript) -->
   <div class="logic-bar hidden" id="logicBar">
     <div class="logic-files">
-      <button class="logic-file" data-logic="module" onclick="switchTab('module')" title="ReplicatedStorage > ArrUI > GameConfig">📦 GameConfig <small>Module</small></button>
-      <button class="logic-file" data-logic="server" onclick="switchTab('server')" title="ServerScriptService > ArrUIServer">🖥 ArrUIServer <small>Script</small></button>
-      <button class="logic-file" data-logic="client" onclick="switchTab('client')" title="StarterPlayerScripts > ArrUIClient">🎮 ArrUIClient <small>LocalScript</small></button>
-      <button class="logic-file ghost" onclick="downloadFile(currentLogicFile())" title="Download file ini">⬇</button>
+      <button class="logic-file" data-logic="module" onclick="switchTab('module')" title="ReplicatedStorage > ArrUI > GameConfig">GameConfig <small>Module</small></button>
+      <button class="logic-file" data-logic="server" onclick="switchTab('server')" title="ServerScriptService > ArrUIServer">ArrUIServer <small>Script</small></button>
+      <button class="logic-file" data-logic="client" onclick="switchTab('client')" title="StarterPlayerScripts > ArrUIClient">ArrUIClient <small>LocalScript</small></button>
+      <button class="logic-file ghost" onclick="downloadFile(currentLogicFile())" title="Download file ini">Download</button>
     </div>
     <div class="logic-meta">
       <span class="logic-path" id="logicPath"></span>

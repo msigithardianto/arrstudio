@@ -54,7 +54,6 @@
   </ul>
 
   <div class="callout info">
-    <span class="callout-icon">🏷️</span>
     <div>
       <strong>Nama Instance</strong> diambil dari <code>data-name</code> / <code>id</code>, teks tombol & judul,
       class CSS, lalu konteks — contoh: <code>ItemShop › Grid › DragonSwordCard › DragonSwordPrice</code>.

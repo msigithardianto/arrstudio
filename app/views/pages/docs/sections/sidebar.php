@@ -14,37 +14,28 @@
   </div>
 
   <div class="docs-side-title">Getting Started</div>
-  <a class="docs-link active" data-doc="intro">
-    <span class="docs-link-icon">🏠</span> Introduction
+  <a class="docs-link active" data-doc="intro"> Introduction
   </a>
-  <a class="docs-link" data-doc="quickstart">
-    <span class="docs-link-icon">⚡</span> Quick Start
+  <a class="docs-link" data-doc="quickstart"> Quick Start
   </a>
 
   <div class="docs-side-title">Reference</div>
-  <a class="docs-link" data-doc="html">
-    <span class="docs-link-icon">📄</span> HTML & CSS
+  <a class="docs-link" data-doc="html"> HTML & CSS
   </a>
-  <a class="docs-link" data-doc="actions">
-    <span class="docs-link-icon">🎯</span> Actions & Toggle
+  <a class="docs-link" data-doc="actions"> Actions & Toggle
   </a>
-  <a class="docs-link" data-doc="logic">
-    <span class="docs-link-icon">🧠</span> Game Logic
-    <span class="docs-link-badge">New</span>
+  <a class="docs-link" data-doc="logic"> Game Logic
+    <span class="docs-link-badge">Baru</span>
   </a>
-  <a class="docs-link" data-doc="output">
-    <span class="docs-link-icon">📦</span> Output Files
+  <a class="docs-link" data-doc="output"> Output Files
   </a>
 
   <div class="docs-side-title">Advanced</div>
-  <a class="docs-link" data-doc="plugin">
-    <span class="docs-link-icon">🔌</span> Plugin & Install Pack
+  <a class="docs-link" data-doc="plugin"> Plugin & Install Pack
   </a>
-  <a class="docs-link" data-doc="api">
-    <span class="docs-link-icon">🔌</span> API Reference
+  <a class="docs-link" data-doc="api"> API Reference
   </a>
-  <a class="docs-link" data-doc="faq">
-    <span class="docs-link-icon">❓</span> FAQ
+  <a class="docs-link" data-doc="faq"> FAQ
   </a>
 
   <div class="docs-no-results" id="docsNoResults">

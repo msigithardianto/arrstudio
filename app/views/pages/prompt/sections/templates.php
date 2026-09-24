@@ -4,7 +4,7 @@
 <div class="pg-panel" data-panel="templates">
   <div class="pg-section">
     <div class="pg-section-title">
-      <span class="num">📋</span>
+      <span class="num">01</span>
       Template Prompt Siap Pakai
     </div>
     <div class="pg-section-desc">
@@ -14,20 +14,20 @@
     <div class="pg-template open">
       <div class="pg-template-head">
         <div class="pg-template-left">
-          <div class="pg-template-icon">❤️</div>
+          <div class="pg-template-icon">01</div>
           <div>
             <div class="pg-template-name">HUD In-Game</div>
             <div class="pg-template-sub">Health bar, mana, skill cooldown</div>
           </div>
         </div>
-        <span class="pg-template-arrow">▶</span>
+        <span class="pg-template-arrow" aria-hidden="true"></span>
       </div>
       <div class="pg-template-body">
         <div class="pg-template-inner">
           <div class="pg-code">
             <div class="pg-code-head">
               <div class="lang"><span class="dot"></span> prompt.txt</div>
-              <button type="button" class="pg-copy" data-copy-target="tpl1">📋 Copy</button>
+              <button type="button" class="pg-copy" data-copy-target="tpl1">Copy</button>
             </div>
             <div class="pg-code-body" id="tpl1">Buatkan HTML untuk HUD in-game Roblox yang akan di-convert pakai ARRR Studio Converter.
 
@@ -63,20 +63,20 @@ OUTPUT:
     <div class="pg-template">
       <div class="pg-template-head">
         <div class="pg-template-left">
-          <div class="pg-template-icon">🏪</div>
+          <div class="pg-template-icon">02</div>
           <div>
             <div class="pg-template-name">Shop Panel</div>
             <div class="pg-template-sub">Grid item + harga + tombol beli</div>
           </div>
         </div>
-        <span class="pg-template-arrow">▶</span>
+        <span class="pg-template-arrow" aria-hidden="true"></span>
       </div>
       <div class="pg-template-body">
         <div class="pg-template-inner">
           <div class="pg-code">
             <div class="pg-code-head">
               <div class="lang"><span class="dot"></span> prompt.txt</div>
-              <button type="button" class="pg-copy" data-copy-target="tpl2">📋 Copy</button>
+              <button type="button" class="pg-copy" data-copy-target="tpl2">Copy</button>
             </div>
             <div class="pg-code-body" id="tpl2">Buatkan HTML untuk Shop Panel Roblox yang akan di-convert pakai ARRR Studio Converter.
 
@@ -115,20 +115,20 @@ OUTPUT:
     <div class="pg-template">
       <div class="pg-template-head">
         <div class="pg-template-left">
-          <div class="pg-template-icon">🎒</div>
+          <div class="pg-template-icon">03</div>
           <div>
             <div class="pg-template-name">Inventory Grid</div>
             <div class="pg-template-sub">Slot item + hover effect</div>
           </div>
         </div>
-        <span class="pg-template-arrow">▶</span>
+        <span class="pg-template-arrow" aria-hidden="true"></span>
       </div>
       <div class="pg-template-body">
         <div class="pg-template-inner">
           <div class="pg-code">
             <div class="pg-code-head">
               <div class="lang"><span class="dot"></span> prompt.txt</div>
-              <button type="button" class="pg-copy" data-copy-target="tpl3">📋 Copy</button>
+              <button type="button" class="pg-copy" data-copy-target="tpl3">Copy</button>
             </div>
             <div class="pg-code-body" id="tpl3">Buatkan HTML untuk Inventory Grid Roblox yang akan di-convert pakai ARRR Studio Converter.
 
@@ -177,20 +177,20 @@ OUTPUT:
     <div class="pg-template">
       <div class="pg-template-head">
         <div class="pg-template-left">
-          <div class="pg-template-icon">💬</div>
+          <div class="pg-template-icon">04</div>
           <div>
             <div class="pg-template-name">Dialogue Box</div>
             <div class="pg-template-sub">NPC dialog RPG + pilihan</div>
           </div>
         </div>
-        <span class="pg-template-arrow">▶</span>
+        <span class="pg-template-arrow" aria-hidden="true"></span>
       </div>
       <div class="pg-template-body">
         <div class="pg-template-inner">
           <div class="pg-code">
             <div class="pg-code-head">
               <div class="lang"><span class="dot"></span> prompt.txt</div>
-              <button type="button" class="pg-copy" data-copy-target="tpl4">📋 Copy</button>
+              <button type="button" class="pg-copy" data-copy-target="tpl4">Copy</button>
             </div>
             <div class="pg-code-body" id="tpl4">Buatkan HTML untuk Dialogue Box RPG Roblox yang akan di-convert pakai ARRR Studio Converter.
 
@@ -235,20 +235,20 @@ OUTPUT:
     <div class="pg-template">
       <div class="pg-template-head">
         <div class="pg-template-left">
-          <div class="pg-template-icon">👑</div>
+          <div class="pg-template-icon">05</div>
           <div>
             <div class="pg-template-name">Billboard Overhead Nametag</div>
             <div class="pg-template-sub">Nama + role + level di atas kepala player</div>
           </div>
         </div>
-        <span class="pg-template-arrow">▶</span>
+        <span class="pg-template-arrow" aria-hidden="true"></span>
       </div>
       <div class="pg-template-body">
         <div class="pg-template-inner">
           <div class="pg-code">
             <div class="pg-code-head">
               <div class="lang"><span class="dot"></span> prompt.txt</div>
-              <button type="button" class="pg-copy" data-copy-target="tpl5">📋 Copy</button>
+              <button type="button" class="pg-copy" data-copy-target="tpl5">Copy</button>
             </div>
             <div class="pg-code-body" id="tpl5">Buatkan script Lua untuk BillboardGui overhead nametag di atas kepala player Roblox.
 

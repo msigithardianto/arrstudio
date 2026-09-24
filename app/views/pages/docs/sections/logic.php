@@ -35,7 +35,6 @@
   </table>
 
   <div class="callout warn">
-    <span class="callout-icon">🔒</span>
     <div>
       <strong>Aman dari exploit:</strong> client hanya mengirim <em>id item</em>. Harga, saldo, cooldown,
       dan hadiah selalu dibaca dari <code>GameConfig</code> di server.

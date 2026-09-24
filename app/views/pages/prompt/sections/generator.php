@@ -4,7 +4,7 @@
 <div class="pg-panel active" data-panel="generator">
   <div class="pg-section">
     <div class="pg-section-title">
-      <span class="num">1</span>
+      <span class="num">01</span>
       Detail UI yang Mau Dibuat
     </div>
     <div class="pg-section-desc">
@@ -25,7 +25,7 @@
           <option value="quest tracker">Quest Tracker</option>
           <option value="notification toast">Notification Toast</option>
           <option value="loading screen">Loading Screen</option>
-          <option value="billboard overhead nametag">👑 Billboard Overhead Nametag</option>
+          <option value="billboard overhead nametag">Billboard Overhead Nametag</option>
           <option value="custom">Custom</option>
         </select>
       </div>
@@ -78,16 +78,16 @@ Border radius 8px di semua panel"></textarea>
 
     <div class="pg-btn-row">
       <button type="button" class="pg-btn pg-btn-primary" id="genBtn">
-        ✨ Generate Prompt
+        Generate Prompt
       </button>
-      <button type="button" class="pg-btn pg-btn-ghost" id="genRandom">🎲 Contoh Acak</button>
-      <button type="button" class="pg-btn pg-btn-ghost" id="genClear">🗑️ Reset Form</button>
+      <button type="button" class="pg-btn pg-btn-ghost" id="genRandom">Contoh Acak</button>
+      <button type="button" class="pg-btn pg-btn-ghost" id="genClear">Reset Form</button>
     </div>
   </div>
 
   <div class="pg-section">
     <div class="pg-section-title">
-      <span class="num">2</span>
+      <span class="num">02</span>
       Copy Prompt
     </div>
     <div class="pg-output">
@@ -96,7 +96,7 @@ Border radius 8px di semua panel"></textarea>
           <span class="dot"></span>
           Generated Prompt
         </div>
-        <button type="button" class="pg-copy" id="genCopy">📋 Copy Prompt</button>
+        <button type="button" class="pg-copy" id="genCopy">Copy Prompt</button>
       </div>
       <div class="pg-output-body" id="genOutput"></div>
     </div>

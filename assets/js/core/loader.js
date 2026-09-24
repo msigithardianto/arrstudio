@@ -42,13 +42,13 @@
   };
 
   if (document.readyState === 'complete') {
-    setTimeout(window.arrrLoaderFinish, 1200);
+    setTimeout(window.arrrLoaderFinish, 200);
   } else {
     window.addEventListener('load', () => {
-      const minDelay = Math.max(0, 1500 - performance.now());
+      const minDelay = Math.max(0, 600 - performance.now());
       setTimeout(window.arrrLoaderFinish, minDelay);
     });
   }
 
-  setTimeout(() => { if (!done) window.arrrLoaderFinish(); }, 5000);
+  setTimeout(() => { if (!done) window.arrrLoaderFinish(); }, 3000);
 })();

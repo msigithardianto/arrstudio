@@ -28,7 +28,6 @@
   <p>Alternatif: copy tab <strong>Full Lua</strong> atau <strong>Billboard</strong>, paste di widget, klik <strong>Build</strong>.</p>
 
   <div class="callout warn">
-    <span class="callout-icon">⚠️</span>
     <div>
       Aktifkan <code>Game Settings → Security → Enable Studio Access to API Services</code>
       (untuk <code>loadstring</code> di Build dan DataStore di Game Logic).
