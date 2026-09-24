@@ -143,25 +143,78 @@ $maxMinutes = intdiv((int)config('app.ytmp3.max_duration', 1800), 60);
       </div>
     </section>
 
-    <!-- ===== 4. HASIL ===== -->
+    <!-- ===== 4. UPLOAD KE ROBLOX (pakai Open Cloud yang sama dengan Auto Spoof) ===== -->
+    <section class="sp-card yt-roblox">
+      <div class="sp-results-head">
+        <h2 class="sp-card-title"><span>04</span> Upload ke Roblox</h2>
+        <label class="sp-check yt-roblox-toggle">
+          <input type="checkbox" id="ytUpload"> Langsung upload setelah convert
+        </label>
+      </div>
+      <p class="yt-desc">
+        MP3 hasil convert dikirim langsung dari server ke akun / grup Roblox kamu — tanpa download &amp; upload ulang.
+        Pengaturan dipakai bersama dengan <a href="<?= url('spoofer') ?>" data-spa>Auto Spoof</a>
+        (cek koneksi API key di sana).
+      </p>
+
+      <div class="yt-roblox-grid">
+        <div>
+          <label class="sp-label" for="ytApiKey">API key Open Cloud</label>
+          <div class="sp-row">
+            <input type="password" id="ytApiKey" class="sp-input" placeholder="Tempel API key" autocomplete="off" spellcheck="false">
+            <button type="button" class="sp-btn-ghost" id="ytToggleKey">Lihat</button>
+          </div>
+          <label class="sp-check">
+            <input type="checkbox" id="ytRemember"> Ingat API key di browser ini
+          </label>
+        </div>
+        <div>
+          <label class="sp-label" for="ytCreatorId">Upload ke</label>
+          <div class="sp-row">
+            <select id="ytCreatorType" class="sp-input sp-select">
+              <option value="user">User (akun saya)</option>
+              <option value="group">Group</option>
+            </select>
+            <input type="text" id="ytCreatorId" class="sp-input" placeholder="User ID / Group ID" inputmode="numeric">
+          </div>
+          <p class="sp-hint">Nama aset = judul video. Upload audio kena kuota bulanan &amp; review moderasi Roblox.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== 5. HASIL ===== -->
     <section class="sp-card sp-results">
       <div class="sp-results-head">
-        <h2 class="sp-card-title"><span>04</span> Hasil</h2>
+        <h2 class="sp-card-title"><span>05</span> Hasil</h2>
         <p class="sp-progress-text" id="ytProgressText">Belum ada proses</p>
       </div>
       <div class="sp-progress"><div class="sp-progress-bar" id="ytProgressBar"></div></div>
 
       <div class="sp-table-wrap yt-table-wrap">
         <table class="sp-table yt-table">
-          <thead><tr><th>#</th><th>Video</th><th>Status</th><th>File</th></tr></thead>
-          <tbody id="ytRows"><tr class="sp-empty"><td colspan="4">Hasil muncul di sini.</td></tr></tbody>
+          <thead><tr><th>#</th><th>Video</th><th>Status</th><th>File</th><th>Roblox</th></tr></thead>
+          <tbody id="ytRows"><tr class="sp-empty"><td colspan="5">Hasil muncul di sini.</td></tr></tbody>
         </table>
       </div>
 
       <div class="sp-output-head">
         <button type="button" class="sp-start yt-zip" id="ytZip" disabled>Download Semua (.zip)</button>
         <button type="button" class="sp-btn-ghost" id="ytRetry" disabled>Ulangi yang gagal</button>
+        <button type="button" class="sp-btn-ghost" id="ytUploadAll" disabled>Upload ke Roblox</button>
         <button type="button" class="sp-btn-ghost" id="ytClear">Bersihkan</button>
+      </div>
+
+      <div class="yt-ids" id="ytIdsWrap" hidden>
+        <div class="sp-output-head">
+          <label class="sp-label" for="ytIdFormat">Asset ID Roblox</label>
+          <select id="ytIdFormat" class="sp-input sp-select sp-format">
+            <option value="rbx">rbxassetid://ID -- judul</option>
+            <option value="ids">ID saja (per baris)</option>
+            <option value="lua">Tabel Lua { ["judul"] = "rbxassetid://ID" }</option>
+          </select>
+          <button type="button" class="sp-btn-ghost" id="ytIdCopy">Copy</button>
+        </div>
+        <textarea id="ytIds" class="sp-input sp-textarea sp-output" readonly spellcheck="false"></textarea>
       </div>
     </section>
 

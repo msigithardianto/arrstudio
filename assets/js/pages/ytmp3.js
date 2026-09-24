@@ -4,6 +4,8 @@
  *  Link playlist di-expand dulu jadi daftar video (action "playlist").
  *  Audio Enhancement (speed + pitch) diproses di server; script kompensasi
  *  Luau di-generate di sini supaya audio terdengar normal lagi di game.
+ *  Upload ke Roblox: hasil convert dikirim langsung dari server lewat
+ *  api/spoof.php (action "ytmp3") — setting dipakai bersama Auto Spoof.
  * ============================================================ */
 (function () {
   'use strict';
@@ -17,6 +19,13 @@
   let running = false;
   let stopped = false;
   let tools   = null;   // status yt-dlp & ffmpeg dari server (action "tools")
+  // item.rbx = { status: 'wait'|'run'|'ok'|'err', assetId?, error?, note? } — upload ke Roblox
+
+  const SPOOF_KEY = 'arrr_spoof_settings';   // sama dengan spoofer.js
+  const OWN_KEY   = 'arrr_ytmp3_settings';
+  const POLL_MS   = 2000;
+  const POLL_MAX  = 60;
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
   let installing = false;
 
   /* ============================================================
@@ -295,7 +304,7 @@ return AudioCompensation
     const body = $('ytRows');
     if (!body) return;   // pindah halaman (SPA) saat proses jalan
     if (!items.length) {
-      body.innerHTML = '<tr class="sp-empty"><td colspan="4">Hasil muncul di sini.</td></tr>';
+      body.innerHTML = '<tr class="sp-empty"><td colspan="5">Hasil muncul di sini.</td></tr>';
       return;
     }
     body.innerHTML = items.map((it, i) => `
@@ -310,7 +319,18 @@ return AudioCompensation
         <td>${it.token
           ? `<a class="sp-btn-ghost yt-dl" href="${esc(downloadUrl(it.token))}" data-no-spa download>MP3</a>`
           : '—'}</td>
+        <td class="yt-rbx">${rbxCell(it)}</td>
       </tr>`).join('');
+  }
+
+  function rbxCell(it) {
+    const r = it.rbx;
+    if (!r) return '—';
+    if (r.status === 'ok') {
+      return `<a href="https://create.roblox.com/store/asset/${esc(r.assetId)}" target="_blank" rel="noopener" data-no-spa>${esc(r.assetId)}</a>`;
+    }
+    const text = r.status === 'err' ? r.error : (r.note || (r.status === 'run' ? 'Upload…' : 'Antri'));
+    return `<span class="sp-status ${r.status}">${esc(text)}</span>`;
   }
 
   function renderProgress() {
@@ -327,11 +347,32 @@ return AudioCompensation
     $('ytZip').textContent = ok ? `Download Semua (${ok} MP3, .zip)` : 'Download Semua (.zip)';
     $('ytRetry').disabled = running || err === 0;
     $('ytClear').disabled = running;
+
+    const uploadable = items.filter(i => i.status === 'ok' && (!i.rbx || i.rbx.status === 'err')).length;
+    $('ytUploadAll').disabled    = running || uploadable === 0;
+    $('ytUploadAll').textContent = uploadable ? `Upload ke Roblox (${uploadable})` : 'Upload ke Roblox';
+  }
+
+  function renderIds() {
+    if (!$('ytIds')) return;
+    const ok = items.filter(i => i.rbx && i.rbx.status === 'ok');
+    $('ytIdsWrap').hidden = !ok.length;
+    const fmt = $('ytIdFormat').value;
+    let text = '';
+    if (fmt === 'ids') {
+      text = ok.map(i => i.rbx.assetId).join('\n');
+    } else if (fmt === 'lua') {
+      text = 'return {\n' + ok.map(i => `\t[${JSON.stringify(i.label)}] = "rbxassetid://${i.rbx.assetId}",`).join('\n') + '\n}';
+    } else {
+      text = ok.map(i => `rbxassetid://${i.rbx.assetId} -- ${i.label.replace(/[\r\n]+/g, ' ')}`).join('\n');
+    }
+    $('ytIds').value = text;
   }
 
   function renderAll() {
     renderRows();
     renderProgress();
+    renderIds();
   }
 
   function setRunning(on) {
@@ -372,6 +413,143 @@ return AudioCompensation
     a.remove();
   }
 
+  /* ============================================================
+     UPLOAD KE ROBLOX (lewat api/spoof.php — file tidak lewat browser)
+     ============================================================ */
+  function loadRobloxSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SPOOF_KEY) || '{}');
+      if (s.creatorType) $('ytCreatorType').value = s.creatorType;
+      if (s.creatorId)   $('ytCreatorId').value   = s.creatorId;
+      if (s.apiKey) {
+        $('ytApiKey').value = s.apiKey;
+        $('ytRemember').checked = true;
+      }
+      const own = JSON.parse(localStorage.getItem(OWN_KEY) || '{}');
+      $('ytUpload').checked = !!own.upload;
+    } catch (e) { /* storage diblok → abaikan */ }
+    renderRobloxToggle();
+  }
+
+  function saveRobloxSettings() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SPOOF_KEY) || '{}');
+      s.creatorType = $('ytCreatorType').value;
+      s.creatorId   = $('ytCreatorId').value.trim();
+      if ($('ytRemember').checked) s.apiKey = $('ytApiKey').value.trim();
+      else delete s.apiKey;
+      localStorage.setItem(SPOOF_KEY, JSON.stringify(s));
+      localStorage.setItem(OWN_KEY, JSON.stringify({ upload: $('ytUpload').checked }));
+    } catch (e) { /* abaikan */ }
+  }
+
+  function renderRobloxToggle() {
+    const card = document.querySelector('.yt-roblox');
+    if (card) card.toggleAttribute('data-off', !$('ytUpload').checked);
+  }
+
+  /** Setting Roblox dari form; null (+ toast) kalau belum lengkap */
+  function robloxCfg() {
+    const cfg = {
+      apiKey:      $('ytApiKey').value.trim(),
+      creatorType: $('ytCreatorType').value,
+      creatorId:   $('ytCreatorId').value.trim(),
+    };
+    if (!cfg.apiKey) {
+      $('ytApiKey').focus();
+      showToast('Isi API key Roblox dulu (card Upload ke Roblox)', 'error', 3500);
+      return null;
+    }
+    if (!/^\d+$/.test(cfg.creatorId)) {
+      $('ytCreatorId').focus();
+      showToast('Isi User ID / Group ID kamu (angka)', 'error', 3500);
+      return null;
+    }
+    saveRobloxSettings();
+    return cfg;
+  }
+
+  async function callSpoof(body) {
+    const res = await fetch(window.__apiUrls.spoof, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      throw new Error('Respons server tidak valid (HTTP ' + res.status + ')');
+    }
+    if (data.error) throw new Error(data.error);
+    return data;
+  }
+
+  async function uploadItem(it, rcfg) {
+    it.rbx = { status: 'run' };
+    renderAll();
+    try {
+      let data = await callSpoof({
+        action: 'ytmp3',
+        apiKey: rcfg.apiKey,
+        creatorType: rcfg.creatorType,
+        creatorId: rcfg.creatorId,
+        token: it.token,
+        name: it.label,
+      });
+      // Roblox masih memproses → polling status operasi
+      for (let n = 0; !data.assetId && data.operationId && n < POLL_MAX; n++) {
+        it.rbx.note = 'Menunggu Roblox…';
+        renderRows();
+        await sleep(POLL_MS);
+        data = await callSpoof({ action: 'status', apiKey: rcfg.apiKey, operationId: data.operationId });
+      }
+      if (!data.assetId) throw new Error('Timeout menunggu Roblox — cek Creator Dashboard nanti');
+      it.rbx = { status: 'ok', assetId: String(data.assetId) };
+    } catch (e) {
+      it.rbx = { status: 'err', error: e.message || 'Upload gagal' };
+    }
+    renderAll();
+  }
+
+  /** Upload semua hasil convert yang belum ter-upload (atau gagal upload) */
+  async function uploadAll() {
+    if (running) return;
+    const rcfg = robloxCfg();
+    if (!rcfg) return;
+    const queue = items.filter(i => i.status === 'ok' && (!i.rbx || i.rbx.status === 'err'));
+    if (!queue.length) return;
+    queue.forEach(it => { it.rbx = { status: 'wait' }; });
+
+    stopped = false;
+    setRunning(true);
+    renderAll();
+    const next = async () => {
+      while (queue.length && !stopped) await uploadItem(queue.shift(), rcfg);
+    };
+    await Promise.all([next(), next()]);
+    queue.forEach(it => { it.rbx = { status: 'err', error: 'Dibatalkan' }; });
+    setRunning(false);
+    renderAll();
+    toastUploads();
+  }
+
+  function toastUploads() {
+    const tried = items.filter(i => i.rbx);
+    if (!tried.length) return false;
+    const ok = tried.filter(i => i.rbx.status === 'ok').length;
+    showToast(`${ok}/${tried.length} audio ter-upload ke Roblox`, ok === tried.length ? 'success' : 'warning', 3500);
+    return true;
+  }
+
+  function copyIds() {
+    const text = $('ytIds').value;
+    if (!text) return;
+    navigator.clipboard.writeText(text)
+      .then(() => showToast('Asset ID di-copy'))
+      .catch(() => { $('ytIds').select(); document.execCommand('copy'); showToast('Asset ID di-copy'); });
+  }
+
   async function processItem(it, cfg) {
     it.status = 'run';
     it.error  = '';
@@ -394,6 +572,10 @@ return AudioCompensation
       fx:       { speed: data.speed ?? cfg.fx.speed, pitch: data.pitch ?? cfg.fx.pitch },
     });
     if (cfg.autoDownload) triggerDownload(downloadUrl(it.token));
+    if (cfg.roblox) {
+      it.rbx = { status: 'wait' };
+      await uploadItem(it, cfg.roblox);
+    }
   }
 
   async function worker(queue, cfg) {
@@ -409,11 +591,12 @@ return AudioCompensation
     }
   }
 
-  async function runQueue(queue) {
+  async function runQueue(queue, roblox) {
     const cfg = {
       bitrate:      $('ytBitrate').value,
       autoDownload: $('ytAutoDownload').checked,
       fx:           fxSettings(),
+      roblox:       roblox || null,
     };
     const parallel = Math.max(1, Math.min(3, parseInt($('ytParallel').value, 10) || 2));
 
@@ -431,8 +614,15 @@ return AudioCompensation
     setRunning(false);
     renderAll();
 
+    if (cfg.roblox && toastUploads()) return;
     const ok = items.filter(i => i.status === 'ok').length;
     showToast(`${ok}/${items.length} video berhasil dikonversi`, ok === items.length ? 'success' : 'warning', 3500);
+  }
+
+  /** Setting Roblox kalau "Langsung upload" dicentang; false = batal (belum lengkap) */
+  function uploadCfgForRun() {
+    if (!$('ytUpload').checked) return null;
+    return robloxCfg() || false;
   }
 
   /* ============================================================
@@ -447,6 +637,8 @@ return AudioCompensation
       $('ytTools').scrollIntoView({ behavior: 'smooth', block: 'center' });
       return showToast('Install yt-dlp & ffmpeg dulu (panel Tools di atas)', 'error', 3500);
     }
+    const roblox = uploadCfgForRun();
+    if (roblox === false) return;
 
     const max  = window.__ytmp3MaxBatch || 50;
     const seen = new Set();
@@ -486,15 +678,17 @@ return AudioCompensation
     }
 
     items = list;
-    await runQueue(items.slice());
+    await runQueue(items.slice(), roblox);
   }
 
   function retryFailed() {
     if (running) return;
     const failed = items.filter(i => i.status === 'err');
     if (!failed.length) return;
-    failed.forEach(it => { it.status = 'wait'; it.error = ''; });
-    runQueue(failed);
+    const roblox = uploadCfgForRun();
+    if (roblox === false) return;
+    failed.forEach(it => { it.status = 'wait'; it.error = ''; it.rbx = null; });
+    runQueue(failed, roblox);
   }
 
   function downloadZip() {
@@ -534,6 +728,20 @@ return AudioCompensation
     });
     $('ytScriptCopy').addEventListener('click', copyScript);
     $('ytToolsInstall').addEventListener('click', installMissing);
+
+    loadRobloxSettings();
+    $('ytUpload').addEventListener('change', () => { renderRobloxToggle(); saveRobloxSettings(); });
+    $('ytRemember').addEventListener('change', saveRobloxSettings);
+    $('ytCreatorType').addEventListener('change', saveRobloxSettings);
+    $('ytCreatorId').addEventListener('change', saveRobloxSettings);
+    $('ytToggleKey').addEventListener('click', () => {
+      const input = $('ytApiKey');
+      input.type = input.type === 'password' ? 'text' : 'password';
+      $('ytToggleKey').textContent = input.type === 'password' ? 'Lihat' : 'Tutup';
+    });
+    $('ytUploadAll').addEventListener('click', uploadAll);
+    $('ytIdFormat').addEventListener('change', renderIds);
+    $('ytIdCopy').addEventListener('click', copyIds);
     $('ytToolsUpdate').addEventListener('click', () => installTools(['ytdlp']));
     $('ytToolsRefresh').addEventListener('click', checkTools);
     $('ytScriptDownload').addEventListener('click', downloadScript);
