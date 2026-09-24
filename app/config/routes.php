@@ -3,13 +3,16 @@
 // Middleware: 'auth' (wajib login), 'guest' (wajib belum login)
 
 // ============================================================
-// HALAMAN — bisa diakses guest
+// HALAMAN — bisa diakses guest (kecuali yang pakai 'auth')
 // ============================================================
 $router->get('landing',   'LandingController@index');
 $router->get('converter', 'ConverterController@index');
 $router->get('library',   'LibraryController@index');
 $router->get('docs',      'DocsController@index');
 $router->get('prompt',    'PromptController@index');
+$router->get('spoofer',   'SpooferController@index', ['auth']);
+$router->get('ytmp3',     'YtMp3Controller@index',   ['auth']);
+$router->get('history',   'HistoryController@index', ['auth']);
 
 // ============================================================
 // AUTH
@@ -27,3 +30,5 @@ $router->get('auth_discord_callback', 'AuthController@discordCallback');
 // ============================================================
 $router->post('api_convert',  'ConvertApiController@handle');
 $router->post('api_generate', 'GenerateApiController@handle');
+$router->post('api_spoof',    'SpoofApiController@handle');
+$router->post('api_ytmp3',    'YtMp3ApiController@handle');

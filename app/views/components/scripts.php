@@ -18,6 +18,9 @@ $scripts = [
     'js/pages/library.js',
     'js/pages/docs.js',
     'js/pages/prompt.js',
+    'js/pages/spoofer.js',
+    'js/pages/ytmp3.js',
+    'js/pages/history.js',
     'js/core/spa.js',
 ];
 ?>
@@ -32,10 +35,14 @@ window.__docsUrl    = <?= json_encode(url('docs')) ?>;
 window.__libraryUrl = <?= json_encode(url('library')) ?>;
 window.__converterUrl = <?= json_encode(url('converter')) ?>;
 window.__loginUrl   = <?= json_encode(url('login')) ?>;
+window.__logoUrl    = <?= json_encode(asset('img/logo.png')) ?>;
 window.__apiUrls = {
   convert:  <?= json_encode(BASE_URL . '/api/convert.php') ?>,
   generate: <?= json_encode(BASE_URL . '/api/generate.php') ?>,
+  spoof:    <?= json_encode(BASE_URL . '/api/spoof.php') ?>,
+  ytmp3:    <?= json_encode(BASE_URL . '/api/ytmp3.php') ?>,
 };
+window.__ytmp3MaxBatch = <?= (int)config('app.ytmp3.max_batch', 50) ?>;
 window.__samplesUrl = <?= json_encode(BASE_URL . '/samples/') ?>;
 </script>
 

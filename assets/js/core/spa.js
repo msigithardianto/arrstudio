@@ -428,11 +428,16 @@
   // ============================================================
   // Back/Forward button
   // ============================================================
+  // Klik link "#anchor" juga memicu popstate — kalau yang beda cuma hash,
+  // biarkan browser scroll ke anchor (jangan fetch ulang + scroll ke atas)
+  const withoutHash = (u) => u.split('#')[0];
   window.addEventListener('popstate', (e) => {
     const url = e.state?.url || location.href;
-    if (url !== currentUrl) {
-      navigate(url, { replace: true });
+    if (withoutHash(url) === withoutHash(currentUrl)) {
+      currentUrl = url;
+      return;
     }
+    navigate(url, { replace: true });
   });
 
   // ============================================================

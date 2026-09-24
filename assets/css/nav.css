@@ -1,5 +1,5 @@
 /* ============================================================
-   assets/css/nav.css — header aplikasi (Converter, Library, Docs, Prompt)
+   assets/css/nav.css — header aplikasi (Converter, Library, Docs, Prompt, Tools ▾)
    ============================================================ */
 
 .app-header {
@@ -53,6 +53,51 @@
 }
 .top-nav-item:hover .nav-indicator { transform: scaleX(.35); }
 .top-nav-item.active .nav-indicator { transform: scaleX(1); }
+
+/* --- Dropdown Tools --- */
+.nav-group { position: relative; display: flex; align-self: stretch; }
+.nav-group-toggle { gap: 6px; border: 0; background: transparent; font-family: inherit; cursor: pointer; }
+.nav-group-chevron { color: var(--ds-text-3); transition: transform var(--ds-fast) ease; }
+.nav-group.open .nav-group-chevron { transform: rotate(180deg); }
+.nav-group-menu {
+  position: absolute;
+  top: calc(100% + 1px);
+  left: 0;
+  min-width: 260px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--ds-surface);
+  border: 1px solid var(--ds-line-2);
+  border-radius: var(--ds-radius-s);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, .35);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-4px);
+  transition: opacity var(--ds-fast) ease, transform var(--ds-fast) ease, visibility var(--ds-fast);
+  z-index: 60;
+}
+.nav-group.open .nav-group-menu { opacity: 1; visibility: visible; transform: none; }
+@media (hover: hover) and (min-width: 1025px) {
+  .nav-group:hover .nav-group-menu { opacity: 1; visibility: visible; transform: none; }
+  .nav-group:hover .nav-group-chevron { transform: rotate(180deg); }
+}
+.nav-group-label { display: none; }
+.nav-group-item {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px 10px 14px;
+  border-radius: var(--ds-radius-s);
+  text-decoration: none;
+  transition: background var(--ds-fast) ease;
+}
+.nav-group-item:hover { background: var(--ds-hover); }
+.nav-group-item.active::before { content: ''; position: absolute; left: 4px; top: 12px; bottom: 12px; width: 2px; background: var(--gold); }
+.nav-group-name { font-size: 13px; font-weight: 600; color: var(--ds-text); }
+.nav-group-desc { font-size: 12px; color: var(--ds-text-3); }
 
 /* --- Kanan --- */
 .top-right { display: flex; align-items: center; gap: 12px; margin-left: auto; }
@@ -196,13 +241,19 @@
 @media (max-width: 1280px) {
   .status-group, .status-group + .top-divider { display: none; }
   .profile-info { display: none; }
+  .app-header { gap: 20px; }
+  .top-nav-item { padding: 0 11px; }
+  .top-nav-item .nav-indicator { left: 11px; right: 11px; }
 }
 @media (max-width: 1100px) {
   .btn.btn-action { padding: 0 10px; letter-spacing: .06em; }
-  .app-header { gap: 16px; }
+  .app-header { gap: 14px; padding: 0 18px; }
+  .top-right { gap: 8px; }
+  .top-nav-item { padding: 0 9px; }
+  .top-nav-item .nav-indicator { left: 9px; right: 9px; }
+  .brand-title { letter-spacing: .16em; }
 }
-@media (max-width: 860px) {
-  .app-header { padding: 0 14px; gap: 10px; }
+@media (max-width: 1024px) {
   .nav-toggle { display: flex; }
   .top-nav {
     position: fixed;
@@ -219,13 +270,38 @@
     z-index: 45;
   }
   .top-nav.open { opacity: 1; visibility: visible; transform: none; }
-  .top-nav-item { padding: 16px 24px; font-size: 16px; }
+  .top-nav { max-height: calc(100vh - 64px); overflow-y: auto; }
+  .top-nav-item { padding: 14px 24px; font-size: 16px; }
   .top-nav-item .nav-indicator { left: 0; right: auto; top: 12px; bottom: 12px; width: 2px; height: auto; }
+
+  /* Tools jadi section biasa di menu mobile */
+  .nav-group { flex-direction: column; align-self: auto; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--ds-line); }
+  .nav-group-toggle { display: none; }
+  .nav-group-menu {
+    position: static;
+    min-width: 0;
+    padding: 0;
+    gap: 0;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    opacity: 1;
+    visibility: inherit;
+    transform: none;
+    transition: none;
+  }
+  .nav-group-label { display: block; padding: 10px 24px 4px; font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase; color: var(--ds-text-3); }
+  .nav-group-item { padding: 12px 24px; border-radius: 0; }
+  .nav-group-item.active::before { left: 0; }
+  .nav-group-name { font-size: 16px; font-weight: 500; }
+}
+@media (max-width: 860px) {
+  .app-header { padding: 0 14px; gap: 10px; }
   .actions, .top-divider { display: none; }
 }
 @media (max-width: 480px) {
   .brand-text { display: none; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .app-header, .top-nav, .profile-menu, .nav-indicator { transition: none !important; }
+  .app-header, .top-nav, .profile-menu, .nav-indicator, .nav-group-menu { transition: none !important; }
 }

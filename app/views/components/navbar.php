@@ -6,10 +6,18 @@ $navVariant = $navVariant ?? 'app';
 
 $navItems = [
     ['id' => 'converter', 'label' => 'Converter', 'url' => url('converter')],
-    ['id' => 'library',   'label' => 'Library', 'url' => url('library')],
-    ['id' => 'docs',      'label' => 'Docs', 'url' => url('docs')],
-    ['id' => 'prompt',    'label' => 'Prompt', 'url' => url('prompt')],
+    ['id' => 'library',   'label' => 'Library',   'url' => url('library')],
+    ['id' => 'docs',      'label' => 'Docs',      'url' => url('docs')],
+    ['id' => 'prompt',    'label' => 'Prompt',    'url' => url('prompt')],
 ];
+
+// Menu "Tools" (dropdown di desktop, section tersendiri di mobile) — hanya untuk user login
+$toolItems = [
+    ['id' => 'spoofer', 'label' => 'Auto Spoof', 'desc' => 'Re-upload aset massal ke akunmu', 'url' => url('spoofer')],
+    ['id' => 'ytmp3',   'label' => 'YT → MP3',   'desc' => 'Convert link YouTube + speed/pitch', 'url' => url('ytmp3')],
+    ['id' => 'history', 'label' => 'Riwayat Upload', 'desc' => 'Semua aset yang sudah kamu upload', 'url' => url('history')],
+];
+$toolsActive = in_array($activePage, array_column($toolItems, 'id'), true);
 
 // ==== AMBIL DATA USER ====
 $currentUser = Auth::check() ? Auth::user() : null;
@@ -46,7 +54,8 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
   </button>
 
   <!-- Brand -->
-  <a href="<?= url('converter') ?>" class="brand" data-spa>
+  <!-- Logo → landing (reload penuh: landing tidak punya header aplikasi yang di-swap SPA) -->
+  <a href="<?= url('landing') ?>" class="brand" data-no-spa title="Beranda">
     <div class="brand-icon">
       <img src="<?= asset('img/logo.png') ?>" alt="ARRR Studio">
     </div>
@@ -68,6 +77,26 @@ $avatarSrc = $userAvatar !== '' ? $userAvatar : asset('img/logo.png');
         <span class="nav-indicator"></span>
       </a>
     <?php endforeach; ?>
+
+    <?php if (Auth::check()): /* Tools butuh login — tidak ditampilkan ke guest */ ?>
+    <div class="nav-group <?= $toolsActive ? 'active' : '' ?>" id="navTools">
+      <button type="button" class="top-nav-item nav-group-toggle <?= $toolsActive ? 'active' : '' ?>"
+              aria-haspopup="true" aria-expanded="false" aria-controls="navToolsMenu">
+        <span class="nav-label">Tools</span>
+        <svg class="nav-group-chevron" viewBox="0 0 12 12" width="10" height="10" fill="none" aria-hidden="true"><path d="M3 4.5l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <span class="nav-indicator"></span>
+      </button>
+      <div class="nav-group-menu" id="navToolsMenu">
+        <span class="nav-group-label">Tools</span>
+        <?php foreach ($toolItems as $item): ?>
+          <a class="nav-group-item <?= is_active($item['id'], $activePage) ?>" href="<?= $item['url'] ?>" data-spa>
+            <span class="nav-group-name"><?= e($item['label']) ?></span>
+            <span class="nav-group-desc"><?= e($item['desc']) ?></span>
+          </a>
+        <?php endforeach; ?>
+      </div>
+    </div>
+    <?php endif; ?>
   </nav>
 
   <!-- Right side -->

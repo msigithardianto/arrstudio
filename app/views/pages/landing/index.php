@@ -19,6 +19,8 @@
 
   <?php View::partial('pages/landing/sections/logic'); ?>
 
+  <?php View::partial('pages/landing/sections/tools'); ?>
+
   <?php View::partial('pages/landing/sections/cta'); ?>
 
   <?php View::partial('pages/landing/sections/footer'); ?>

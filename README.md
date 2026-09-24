@@ -9,6 +9,16 @@ cp .env.example .env              # isi kredensial OAuth Google / Discord
 php -S localhost:8000 server.php  # dev server (meniru .htaccess)
 ```
 
+Fitur **YT → MP3** butuh `yt-dlp` + `ffmpeg`:
+
+- **Windows / XAMPP**: buka halaman YT → MP3 → panel **Tools** → klik **Install otomatis**.
+  Server men-download `yt-dlp.exe`, `ffmpeg.exe`, `ffprobe.exe` ke `storage/bin/` (tanpa setting PATH).
+  Manual: taruh ketiga file itu sendiri di `storage/bin/`. Tombol **Update yt-dlp** untuk versi terbaru.
+- **Linux / macOS**: `yt-dlp` bisa lewat Install otomatis; ffmpeg lewat `sudo apt install ffmpeg` / `brew install ffmpeg`.
+- Lokasi custom: isi `YTDLP_BIN` / `FFMPEG_BIN` di `.env`.
+
+Batas durasi, jumlah link, TTL file, dan tombol install (`allow_install`) ada di `app/config/app.php` → `ytmp3`.
+
 Di Apache (XAMPP dll.) cukup taruh folder project di `htdocs`; `.htaccess` sudah menangani pretty URL (`/docs`, `/converter`, ...).
 
 ## Struktur
@@ -19,6 +29,10 @@ server.php                 router untuk `php -S` (development)
 api/
   convert.php              POST HTML → node tree     (ConvertApiController)
   generate.php             POST node tree → Lua/rbxmx (GenerateApiController)
+  spoof.php                Auto Spoof: re-upload aset via Open Cloud (SpoofApiController)
+                           + izin game massal (grant) & riwayat upload (history)
+  ytmp3.php                YT → MP3 massal + Audio Enhancement speed/pitch (YtMp3ApiController);
+                           upload langsung ke Roblox lewat spoof.php action "ytmp3"
 app/
   bootstrap.php            konstanta path, autoload, .env, session
   config/
@@ -32,7 +46,9 @@ app/
   services/
     auth/                  Auth (session), UserRepository (storage/users.json), OAuthService
     converter/             HtmlParser (HTML → node), NodeNamer (penamaan node)
+    media/                 YoutubeMp3Service (yt-dlp + ffmpeg, speed/pitch), MediaTools (cari/install binary), ProcessRunner
     generators/            LuaGenerator, FullScriptGenerator, RbxmxGenerator, PluginGenerator, BillboardGenerator
+    roblox/                RobloxAssetService (Open Cloud), UploadHistory (storage/history/<user>.json)
     ExportService.php      gabungkan semua output generator
     GuestLimiter.php       kuota converter untuk guest
   helpers/

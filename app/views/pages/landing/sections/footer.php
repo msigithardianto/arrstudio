@@ -8,7 +8,7 @@
         <img src="<?= asset('img/logo.png') ?>" alt="">
         <span>ARRR <b>STUDIO</b></span>
       </a>
-      <p>HTML → Roblox GUI converter dengan Game Logic otomatis.</p>
+      <p>HTML → Roblox GUI converter dengan Game Logic otomatis — plus tools audio &amp; aset untuk creator.</p>
     </div>
     <div class="lx-footer-col">
       <h4>Produk</h4>
@@ -16,6 +16,14 @@
       <a href="<?= url('library') ?>">Library</a>
       <a href="<?= url('prompt') ?>">Prompt</a>
     </div>
+    <?php if (Auth::check()): ?>
+    <div class="lx-footer-col">
+      <h4>Tools</h4>
+      <a href="<?= url('ytmp3') ?>">YT → MP3</a>
+      <a href="<?= url('spoofer') ?>">Auto Spoof</a>
+      <a href="<?= url('history') ?>">Riwayat Upload</a>
+    </div>
+    <?php endif; ?>
     <div class="lx-footer-col">
       <h4>Belajar</h4>
       <a href="<?= url('docs') ?>">Dokumentasi</a>
