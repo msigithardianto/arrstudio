@@ -19,6 +19,7 @@ server.php                 router untuk `php -S` (development)
 api/
   convert.php              POST HTML → node tree     (ConvertApiController)
   generate.php             POST node tree → Lua/rbxmx (GenerateApiController)
+  spoof.php                Auto Spoof: re-upload aset via Open Cloud (SpoofApiController)
 app/
   bootstrap.php            konstanta path, autoload, .env, session
   config/
