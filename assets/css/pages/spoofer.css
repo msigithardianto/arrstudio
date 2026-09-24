@@ -137,6 +137,27 @@
 .sp-start:hover:not(:disabled) { background: var(--gold-bright); }
 .sp-start:disabled { opacity: .5; cursor: not-allowed; }
 
+/* ---------- Cek koneksi ---------- */
+.sp-check-row { margin-top: 4px; }
+.sp-check-result {
+  padding: 12px 14px;
+  border: 1px solid var(--ds-line-2);
+  border-left: 3px solid var(--ds-line-2);
+  background: var(--ds-bg);
+  font-size: 13px;
+  color: var(--ds-text-2);
+}
+.sp-check-result.ok  { border-left-color: var(--ds-ok); }
+.sp-check-result.err { border-left-color: var(--ds-err); }
+.sp-check-result b { color: var(--ds-text); }
+.sp-check-result ul { display: flex; flex-direction: column; gap: 5px; margin: 8px 0 0; padding: 0; list-style: none; }
+.sp-check-result li { position: relative; padding-left: 18px; line-height: 1.5; word-break: break-word; }
+.sp-check-result li::before { content: ''; position: absolute; left: 2px; top: 7px; width: 7px; height: 7px; border-radius: 50%; background: var(--ds-text-3); }
+.sp-check-result li.ok::before   { background: var(--ds-ok); }
+.sp-check-result li.err::before  { background: var(--ds-err); }
+.sp-check-result li.warn::before { background: var(--ds-warn); }
+.sp-check-result li.err { color: var(--ds-text); }
+
 /* ---------- Hasil ---------- */
 .sp-results-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
 .sp-progress-text { font-family: var(--ds-mono); font-size: 12px; color: var(--ds-text-2); }

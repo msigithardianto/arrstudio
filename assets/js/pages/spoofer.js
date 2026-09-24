@@ -251,6 +251,62 @@
     showToast(`${ok}/${items.length} aset berhasil di-upload`, ok === items.length ? 'success' : 'warning', 3500);
   }
 
+  /* ============================================================
+     CEK KONEKSI API KEY
+     ============================================================ */
+  async function checkConnection() {
+    const apiKey = $('spApiKey').value.trim();
+    if (!apiKey) return showToast('Masukkan API key Roblox dulu', 'error');
+    const testId = parseIds($('spTestId').value)[0] || '';
+
+    const box = $('spCheckResult');
+    const btn = $('spCheck');
+    btn.disabled = true;
+    btn.textContent = 'Mengecek…';
+    box.hidden = false;
+    box.className = 'sp-check-result';
+    box.innerHTML = '<p>Menghubungi Roblox…</p>';
+
+    const line = (ok, text) => `<li class="${ok === null ? 'warn' : (ok ? 'ok' : 'err')}">${esc(text)}</li>`;
+    try {
+      const r = await callApi({ action: 'check', apiKey, assetId: testId });
+      const rows = [];
+      if (r.introspected) {
+        rows.push(line(r.enabled !== false && r.expired !== true,
+          'API key ' + (r.expired ? 'kedaluwarsa' : (r.enabled === false ? 'nonaktif' : 'valid & aktif'))
+          + (r.name ? ' — "' + r.name + '"' : '')));
+        if (r.userId) rows.push(line(true, 'Pemilik key: User ID ' + r.userId));
+        ['asset:read', 'asset:write', 'legacy-asset:manage'].forEach(op =>
+          rows.push(line(!r.missing.includes(op), 'Scope ' + op + (r.missing.includes(op) ? ' — belum ada' : ''))));
+      } else {
+        rows.push(line(null, 'Detail API key tidak bisa dibaca (introspect tidak tersedia)'));
+      }
+      if (r.asset) {
+        rows.push(line(r.asset.ok, r.asset.ok
+          ? `Tes download ${r.asset.id}: berhasil (${r.asset.kind}, ${(r.asset.bytes / 1024).toFixed(0)} KB)`
+          : `Tes download ${r.asset.id}: ${r.asset.error}`));
+      } else {
+        rows.push(line(null, 'Isi Asset ID tes untuk mengecek akses download'));
+      }
+      box.classList.add(r.ok ? 'ok' : 'err');
+      box.innerHTML = `<p><b>${r.ok ? 'Terhubung ke Roblox Open Cloud' : 'Ada yang perlu dibenahi'}</b></p><ul>${rows.join('')}</ul>`;
+
+      // Isi otomatis User ID kalau masih kosong
+      if (r.userId && $('spCreatorType').value === 'user' && !$('spCreatorId').value.trim()) {
+        $('spCreatorId').value = r.userId;
+        saveSettings();
+      }
+    } catch (e) {
+      box.classList.add('err');
+      box.innerHTML = `<p><b>Tidak terhubung</b></p><ul>${line(false, e.message)}</ul>`;
+    } finally {
+      if ($('spCheck')) {
+        btn.disabled = false;
+        btn.textContent = 'Cek koneksi';
+      }
+    }
+  }
+
   function copyOutput() {
     const text = $('spOutput').value;
     if (!text) return showToast('Belum ada hasil', 'warning');
@@ -306,6 +362,7 @@
     ['dragleave', 'drop'].forEach(ev => drop.addEventListener(ev, () => drop.classList.remove('drag')));
 
     root.addEventListener('click', start);
+    $('spCheck').addEventListener('click', checkConnection);
     $('spStop').addEventListener('click', () => { stopped = true; renderProgress(); });
     $('spFormat').addEventListener('change', renderOutput);
     $('spCopy').addEventListener('click', copyOutput);

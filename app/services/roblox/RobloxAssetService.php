@@ -6,7 +6,7 @@
 //
 // Scope API key yang dibutuhkan:
 //   - asset:read + asset:write      → upload & cek status operasi
-//   - legacy-assets:manage          → download aset dari asset ID (asset-delivery-api)
+//   - legacy-asset:manage           → download aset dari asset ID (asset-delivery-api)
 
 class RobloxAssetService
 {
@@ -14,6 +14,10 @@ class RobloxAssetService
     private const OPERATION_URL = 'https://apis.roblox.com/assets/v1/operations/';
     private const DELIVERY_URL  = 'https://apis.roblox.com/asset-delivery-api/v1/assetId/';
     private const LEGACY_URL    = 'https://assetdelivery.roblox.com/v2/assetId/';
+    private const INTROSPECT_URL = 'https://apis.roblox.com/api-keys/v1/introspect';
+
+    /** Operasi yang dibutuhkan Auto Spoof */
+    private const REQUIRED_OPS = ['asset:read', 'asset:write', 'legacy-asset:manage'];
 
     /** Batas ukuran file yang di-download / di-upload (byte) */
     public const MAX_BYTES = 20 * 1024 * 1024;
@@ -66,25 +70,120 @@ class RobloxAssetService
     private function resolveLocation(string $assetId): string
     {
         // 1. Open Cloud (pakai API key → bisa akses aset privat milik kamu / grup kamu)
+        //    Balasan bisa {location} (v1) atau {locations:[{location}]} — dua-duanya dicek,
+        //    dan HTTP 200 pun bisa berisi {errors:[...]}.
         $res  = $this->request('GET', self::DELIVERY_URL . $assetId, ['x-api-key: ' . $this->apiKey]);
-        $json = json_decode($res['body'], true);
-        if ($res['status'] === 200 && !empty($json['location'])) {
-            return (string)$json['location'];
+        $json = json_decode($res['body'], true) ?: [];
+        $location = self::pickLocation($json);
+        if ($res['status'] === 200 && $location !== null) {
+            return $location;
+        }
+        $cloudError = self::deliveryError($res['status'], $json, $res['body']);
+
+        // 2. Fallback asset delivery publik (tanpa login — hanya aset publik)
+        try {
+            $legacy   = $this->request('GET', self::LEGACY_URL . $assetId, ['Accept: application/json']);
+            $location = self::pickLocation(json_decode($legacy['body'], true) ?: []);
+            if ($legacy['status'] === 200 && $location !== null) {
+                return $location;
+            }
+        } catch (Throwable) {
+            // abaikan — yang dilaporkan error Open Cloud
         }
 
-        // 2. Fallback asset delivery publik (gambar publik tetap bisa diambil)
-        $legacy = $this->request('GET', self::LEGACY_URL . $assetId, ['Accept: application/json']);
-        $ljson  = json_decode($legacy['body'], true);
-        if ($legacy['status'] === 200 && !empty($ljson['locations'][0]['location'])) {
-            return (string)$ljson['locations'][0]['location'];
+        throw new RuntimeException('Gagal download aset ' . $assetId . ': ' . $cloudError);
+    }
+
+    /** Ambil URL file dari balasan asset delivery (v1: location, v2: locations[]) */
+    private static function pickLocation(array $json): ?string
+    {
+        if (!empty($json['location']) && is_string($json['location'])) {
+            return $json['location'];
+        }
+        foreach ((array)($json['locations'] ?? []) as $loc) {
+            if (!empty($loc['location']) && is_string($loc['location'])) {
+                return $loc['location'];
+            }
+        }
+        return null;
+    }
+
+    /** Pesan error asset delivery Open Cloud + petunjuk sesuai penyebabnya */
+    private static function deliveryError(int $status, array $json, string $raw): string
+    {
+        $msg = (string)($json['message'] ?? $json['errors'][0]['message'] ?? '');
+        $hint = match (true) {
+            $status === 401                               => 'API key tidak valid / kedaluwarsa, atau IP server belum ada di Accepted IP.',
+            $status === 403 && stripos($msg, 'scope') !== false,
+            stripos($msg, 'insufficient') !== false       => 'API key belum punya scope legacy-asset:manage.',
+            $status === 403                               => 'API key tidak diizinkan (cek Accepted IP & scope legacy-asset:manage).',
+            $status === 404                               => 'Asset ID tidak ditemukan.',
+            $status === 429                               => 'Kena rate limit Roblox, turunkan kecepatan / coba lagi nanti.',
+            stripos($msg, 'not approved') !== false       => 'Aset masih di-review / ditolak moderasi, atau pemilik aset beda dengan pemilik API key '
+                                                           . '(aset grup harus pakai API key yang dibuat dari grup itu).',
+            default                                       => '',
+        };
+        $text = 'HTTP ' . $status . ($msg !== '' ? ' — ' . $msg : ($raw !== '' && $status !== 200 ? ' — ' . substr(strip_tags($raw), 0, 120) : ''));
+        return $text . ($hint !== '' ? '. ' . $hint : '');
+    }
+
+    // ============================================================
+    // CEK KONEKSI API KEY
+    // ============================================================
+
+    /**
+     * Cek API key: valid / aktif, pemilik, scope. Opsional tes download satu asset ID.
+     * @return array{ok:bool, name:?string, userId:?string, enabled:?bool, expired:?bool,
+     *               scopes:array, missing:list<string>, asset:?array}
+     */
+    public function check(?string $testAssetId = null): array
+    {
+        $res  = $this->request('POST', self::INTROSPECT_URL, ['Content-Type: application/json'], json_encode(['apiKey' => $this->apiKey]));
+        $json = json_decode($res['body'], true) ?: [];
+        if (in_array($res['status'], [400, 401, 403], true)) {
+            throw new RuntimeException('API key ditolak Roblox (HTTP ' . $res['status'] . '): ' . self::errorMessage($json, $res['body'])
+                . '. Pastikan key di-copy lengkap & belum di-regenerate.');
+        }
+        $introspected = $res['status'] === 200;
+
+        // scopes: [{name:"legacy-assets", operations:["legacy-asset:manage"]}] atau ["asset:read", ...]
+        $ops = [];
+        foreach ((array)($json['scopes'] ?? []) as $scope) {
+            if (is_string($scope)) {
+                $ops[] = $scope;
+                continue;
+            }
+            foreach ((array)($scope['operations'] ?? []) as $op) {
+                $ops[] = (string)$op;
+            }
+        }
+        $missing = $introspected ? array_values(array_diff(self::REQUIRED_OPS, $ops)) : [];
+
+        $asset = null;
+        if ($testAssetId !== null) {
+            try {
+                $file  = $this->download($testAssetId);
+                $info  = self::detect($file['bytes']);
+                $asset = ['ok' => true, 'id' => $testAssetId, 'kind' => $info['kind'] ?? 'unknown', 'bytes' => strlen($file['bytes'])];
+            } catch (Throwable $e) {
+                $asset = ['ok' => false, 'id' => $testAssetId, 'error' => $e->getMessage()];
+            }
         }
 
-        $reason = $json['message'] ?? $json['errors'][0]['message'] ?? $ljson['errors'][0]['message'] ?? null;
-        throw new RuntimeException(
-            'Gagal download aset ' . $assetId . ' (HTTP ' . $res['status'] . ')'
-            . ($reason ? ': ' . $reason : '')
-            . '. Pastikan API key punya scope legacy-assets:manage dan kamu punya akses ke aset ini.'
-        );
+        $enabled = isset($json['enabled']) ? (bool)$json['enabled'] : null;
+        $expired = isset($json['expired']) ? (bool)$json['expired'] : null;
+
+        return [
+            'ok'      => $enabled !== false && $expired !== true && !$missing && ($asset['ok'] ?? $introspected),
+            'introspected' => $introspected,
+            'name'    => isset($json['name']) ? (string)$json['name'] : null,
+            'userId'  => isset($json['authorizedUserId']) ? (string)$json['authorizedUserId'] : null,
+            'enabled' => $enabled,
+            'expired' => $expired,
+            'scopes'  => array_values(array_unique($ops)),
+            'missing' => $missing,
+            'asset'   => $asset,
+        ];
     }
 
     private function fetchLocation(string $url): string

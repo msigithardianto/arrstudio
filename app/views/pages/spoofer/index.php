@@ -35,6 +35,12 @@ $isLoggedIn = Auth::check();
           <input type="checkbox" id="spRemember"> Ingat API key di browser ini
         </label>
 
+        <div class="sp-row sp-check-row">
+          <input type="text" id="spTestId" class="sp-input" placeholder="Asset ID untuk tes (opsional)" inputmode="numeric">
+          <button type="button" class="sp-btn-ghost" id="spCheck" <?= $isLoggedIn ? "" : "disabled" ?>>Cek koneksi</button>
+        </div>
+        <div class="sp-check-result" id="spCheckResult" hidden></div>
+
         <label class="sp-label">Upload ke</label>
         <div class="sp-row">
           <select id="spCreatorType" class="sp-input sp-select">
@@ -48,7 +54,7 @@ $isLoggedIn = Auth::check();
           <summary>Cara bikin API key</summary>
           <ol>
             <li>Buka <a href="https://create.roblox.com/dashboard/credentials" target="_blank" rel="noopener">create.roblox.com → Credentials</a> → <b>Create API Key</b>.</li>
-            <li>Access Permissions: tambah <b>Assets</b> (<code>asset:read</code>, <code>asset:write</code>) dan <b>Legacy Assets</b> (<code>legacy-assets:manage</code>) untuk download dari asset ID.</li>
+            <li>Access Permissions: tambah <b>Assets</b> (<code>asset:read</code>, <code>asset:write</code>) dan <b>Legacy Assets</b> (<code>legacy-asset:manage</code>) untuk download dari asset ID.</li>
             <li>Accepted IP: isi IP server ini, atau <code>0.0.0.0/0</code> untuk testing.</li>
             <li>Untuk upload ke grup, API key harus dibuat dari grup tersebut.</li>
             <li>User ID ada di URL profil: roblox.com/users/<b>123456</b>/profile.</li>
