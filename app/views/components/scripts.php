@@ -23,6 +23,7 @@ $scripts = [
 ?>
 <script>
 window.__isLoggedIn = <?= Auth::check() ? 'true' : 'false' ?>;
+window.__guestMax   = <?= (int)config('app.guest.max_uses', 3) ?>;
 window.__oauthUrls = {
   google:  <?= json_encode(url('auth_google')) ?>,
   discord: <?= json_encode(url('auth_discord')) ?>,

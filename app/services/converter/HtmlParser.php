@@ -14,6 +14,22 @@ class HtmlParser {
     private $W;
     private $H;
 
+    /** rectMap per data-arrr-idx (kosong = mode lama berbasis urutan) */
+    private $rectByIdx = [];
+    private $indexed = false;
+
+    /** Tag yang tidak pernah jadi node */
+    private const SKIP_TAGS = [
+        'script','style','meta','link','title','head','template','noscript',
+        'option','optgroup','datalist','param','source','track','base','wbr',
+    ];
+
+    /** Tag yang jadi node tapi isinya tidak ditelusuri */
+    private const LEAF_TAGS = [
+        'svg','canvas','video','audio','iframe','object','embed','img','input',
+        'textarea','select','math','progress','meter','hr',
+    ];
+
     private $supported = [
         'div','span','p','button','input','img','h1','h2','h3','h4','h5','h6',
         'a','label','ul','ol','li','br','hr','section','header','footer','main',
@@ -36,6 +52,15 @@ class HtmlParser {
         $nodes = [];
         $idx = 0;
         $rectQueue = array_values($rectMap);
+
+        // Mode baru: rect dicocokkan lewat atribut data-arrr-idx (dari converter.js)
+        $this->rectByIdx = [];
+        foreach ($rectMap as $r) {
+            if (is_array($r) && isset($r['idx']) && (array_key_exists('style', $r) || !empty($r['merged']))) {
+                $this->rectByIdx[(int)$r['idx']] = $r;
+            }
+        }
+        $this->indexed = !empty($this->rectByIdx);
 
         $body = $doc->getElementsByTagName('body')->item(0);
         if (!$body) return [];
@@ -74,19 +99,33 @@ class HtmlParser {
         // FIX: skip <option>
         if ($tag === 'option') return;
 
-        if (!in_array($tag, $this->supported, true)) {
-            foreach ($el->childNodes as $c) {
-                $this->walk($c, $parentId, $nodes, $idx, $parentHidden, $rectQueue, $inheritedColor, $parentIsToggleSwitch);
+        if ($this->indexed) {
+            // === MODE COMPUTED: semua tag didukung, style = hasil render browser ===
+            if (in_array($tag, self::SKIP_TAGS, true) || !$el->hasAttribute('data-arrr-idx')) return;
+
+            $rect = $this->rectByIdx[(int)$el->getAttribute('data-arrr-idx')] ?? null;
+            if (!is_array($rect) || !empty($rect['merged'])) return; // digabung ke RichText parent
+
+            $style = is_array($rect['style'] ?? null) ? $rect['style'] : [];
+            // Ukuran hasil render, dipakai deteksi toggle switch dsb.
+            $style['width']  = ((int)($rect['w'] ?? 0)) . 'px';
+            $style['height'] = ((int)($rect['h'] ?? 0)) . 'px';
+        } else {
+            // === MODE LAMA: whitelist tag + inline style + urutan rectMap ===
+            if (!in_array($tag, $this->supported, true)) {
+                foreach ($el->childNodes as $c) {
+                    $this->walk($c, $parentId, $nodes, $idx, $parentHidden, $rectQueue, $inheritedColor, $parentIsToggleSwitch);
+                }
+                return;
             }
-            return;
-        }
 
-        $rect = array_shift($rectQueue);
-        if (!is_array($rect)) {
-            $rect = ['x'=>0, 'y'=>0, 'w'=>0, 'h'=>0, 'selfHidden'=>false];
-        }
+            $rect = array_shift($rectQueue);
+            if (!is_array($rect)) {
+                $rect = ['x'=>0, 'y'=>0, 'w'=>0, 'h'=>0, 'selfHidden'=>false];
+            }
 
-        $style = CssHelper::parseInlineStyle($el->getAttribute('style'));
+            $style = CssHelper::parseInlineStyle($el->getAttribute('style'));
+        }
 
         $x = (int)($rect['x'] ?? 0);
         $y = (int)($rect['y'] ?? 0);
@@ -98,11 +137,18 @@ class HtmlParser {
             $isSelfHidden = false;
         }
 
-        $text = '';
-        foreach ($el->childNodes as $c) {
-            if ($c instanceof DOMText) $text .= $c->textContent;
+        $richText = '';
+        if (array_key_exists('text', $rect)) {
+            // Teks dari browser: sudah termasuk <b>/<a>/<span> inline + text-transform
+            $text     = (string)$rect['text'];
+            $richText = (string)($rect['rich'] ?? '');
+        } else {
+            $text = '';
+            foreach ($el->childNodes as $c) {
+                if ($c instanceof DOMText) $text .= $c->textContent;
+            }
+            $text = trim(preg_replace('/\s+/', ' ', $text));
         }
-        $text = trim(preg_replace('/\s+/', ' ', $text));
 
         if ($isSelfHidden && ($w === 0 || $h === 0)) {
             $fontPx = CssHelper::parsePx($style['font-size'] ?? null) ?? 16;
@@ -114,6 +160,11 @@ class HtmlParser {
 
         $bg = CssHelper::parseColor($style['background'] ?? $style['background-color'] ?? 'transparent');
         $gradient = CssHelper::parseGradient($style['background'] ?? $style['background-image'] ?? '');
+
+        // radial/conic → warna rata-rata (UIGradient cuma linear)
+        if (!$gradient && $bg['a'] < 0.01) {
+            $bg = CssHelper::solidFromGradient($style['background'] ?? $style['background-image'] ?? '') ?? $bg;
+        }
 
         if ($gradient && !empty($gradient['keypoints'])) {
             if ($bg['a'] < 0.01 || ($bg['r'] < 0.01 && $bg['g'] < 0.01 && $bg['b'] < 0.01)) {
@@ -133,6 +184,14 @@ class HtmlParser {
         }
 
         $border = CssHelper::parseColor($style['border-color'] ?? $style['border-top-color'] ?? 'transparent');
+        $borderW = CssHelper::parsePx($style['border-width'] ?? null)
+            ?? max(array_map(fn($side) => CssHelper::parsePx($style["border-{$side}-width"] ?? null) ?? 0, ['top', 'right', 'bottom', 'left']));
+        if (($style['border-top-style'] ?? '') === 'none' && !isset($style['border-width'])) {
+            $borderW = max(array_map(fn($side) => CssHelper::parsePx($style["border-{$side}-width"] ?? null) ?? 0, ['right', 'bottom', 'left']));
+        }
+
+        $fontSize   = CssHelper::parsePx($style['font-size'] ?? null) ?? 16;
+        $lineHeight = CssHelper::parsePx($style['line-height'] ?? null) ?? (int)round($fontSize * 1.2);
 
         $radii = [
             'TL' => CssHelper::parsePx($style['border-top-left-radius']     ?? $style['border-radius'] ?? null) ?? 0,
@@ -172,7 +231,7 @@ class HtmlParser {
             'id' => ++$idx,
             'parentId' => $parentId,
             'tag' => $tag,
-            'robloxClass' => $this->mapClass($tag, $style, $el),
+            'robloxClass' => $this->mapClass($tag, $style, $el, $text),
             'name' => '',
             'explicitName' => $explicitName,
             'sourceId' => $id,
@@ -189,15 +248,20 @@ class HtmlParser {
             'gradient' => $gradient,
             'fg' => $fg,
             'borderColor' => $border,
-            'borderW' => CssHelper::parsePx($style['border-width'] ?? $style['border-top-width'] ?? null) ?? 0,
+            'borderW' => $borderW,
 
             'radius' => max($radii),
             'radiusUniform' => count(array_unique($radii)) === 1,
             'radiusCorners' => $radii,
 
-            'fontSize' => CssHelper::parsePx($style['font-size'] ?? null) ?? 16,
+            'fontSize' => $fontSize,
             'fontWeight' => $style['font-weight'] ?? '400',
-            'textAlign' => $style['text-align'] ?? 'left',
+            'fontStyle' => $style['font-style'] ?? 'normal',
+            'fontFamily' => $style['font-family'] ?? '',
+            'lineHeight' => $lineHeight,
+            'textAlign' => CssHelper::textAlignX($style),
+            'textAlignY' => CssHelper::textAlignY($style, $tag, $h, $lineHeight, $text),
+            'textWrapped' => CssHelper::isMultiline($style, $h, $lineHeight, $text),
 
             'padL' => CssHelper::parsePx($style['padding-left']   ?? CssHelper::firstPad($style['padding'] ?? null) ?? null) ?? 0,
             'padR' => CssHelper::parsePx($style['padding-right']  ?? CssHelper::firstPad($style['padding'] ?? null) ?? null) ?? 0,
@@ -205,6 +269,7 @@ class HtmlParser {
             'padB' => CssHelper::parsePx($style['padding-bottom'] ?? CssHelper::firstPad($style['padding'] ?? null) ?? null) ?? 0,
 
             'opacity' => (float)($style['opacity'] ?? 1),
+            'clips' => CssHelper::clipsContent($style),
             'transition' => CssHelper::parseTransition($style['transition'] ?? ''),
             'cursor' => $style['cursor'] ?? 'default',
             'isButtonLike' => $this->isButtonLike($tag, $style, $el),
@@ -215,6 +280,7 @@ class HtmlParser {
             'target' => $dataTarget,
 
             'text' => $text,
+            'richText' => $richText,
             'value' => $el->getAttribute('value'),
             'placeholder' => $el->getAttribute('placeholder'),
             'src' => $el->getAttribute('src'),
@@ -225,6 +291,9 @@ class HtmlParser {
 
         $nodes[] = $node;
         $newId = $node['id'];
+
+        // Isi <svg>, <select>, <video>, ... tidak dijadikan node
+        if (in_array($tag, self::LEAF_TAGS, true)) return;
 
         foreach ($el->childNodes as $c) {
             $this->walk($c, $newId, $nodes, $idx, $isSelfHidden || $parentHidden, $rectQueue, $fg, $isToggleSwitch);
@@ -312,7 +381,7 @@ class HtmlParser {
         return false;
     }
 
-    private function mapClass($tag, $style, $el) {
+    private function mapClass($tag, $style, $el, $text = '') {
         // FIX: overflow-y auto/scroll → ScrollingFrame
         $overflowY = $style['overflow-y'] ?? $style['overflow'] ?? '';
         if (stripos($overflowY, 'auto') !== false || stripos($overflowY, 'scroll') !== false) {
@@ -320,6 +389,12 @@ class HtmlParser {
         }
 
         if ($tag === 'select') return 'TextLabel';
+        if (in_array($tag, ['input', 'textarea'], true)) {
+            $type = strtolower($el->getAttribute('type'));
+            if (in_array($type, ['button', 'submit', 'reset'], true)) return 'TextButton';
+            if (in_array($type, ['checkbox', 'radio', 'range', 'color', 'file', 'hidden'], true)) return 'Frame';
+            return 'TextBox';
+        }
         if ($this->isButtonLike($tag, $style, $el)) return 'TextButton';
         switch ($tag) {
             case 'button': case 'a': return 'TextButton';
@@ -328,6 +403,7 @@ class HtmlParser {
             case 'h1': case 'h2': case 'h3': case 'h4': case 'h5': case 'h6':
             case 'p': case 'span': case 'label': case 'li': return 'TextLabel';
             case 'div':
+                if ($this->indexed) return trim($text) !== '' ? 'TextLabel' : 'Frame';
                 $hasText = false;
                 foreach ($el->childNodes as $c) {
                     if ($c instanceof DOMText && trim($c->textContent) !== '') { $hasText = true; break; }
@@ -338,7 +414,9 @@ class HtmlParser {
                 }
                 if ($hasText && $childElements === 0) return 'TextLabel';
                 return 'Frame';
-            default: return 'Frame';
+            default:
+                // Tag lain (section, table, td, form, strong, ...) — punya teks = TextLabel
+                return trim($text) !== '' ? 'TextLabel' : 'Frame';
         }
     }
 

@@ -2,6 +2,10 @@
 // app/services/generators/RbxmxGenerator.php — model .rbxmx siap import
 class RbxmxGenerator {
 
+    /** Enum.TextXAlignment / Enum.TextYAlignment → nilai token */
+    private const TEXT_X = ['Left' => 0, 'Right' => 1, 'Center' => 2];
+    private const TEXT_Y = ['Top' => 0, 'Center' => 1, 'Bottom' => 2];
+
     public static function generate($nodes, $W = 800, $H = 600) {
         $refCounter = 0;
         $newRef = function() use (&$refCounter) {
@@ -62,104 +66,92 @@ class RbxmxGenerator {
 
         $writeNode = function($n, $indent) use (&$writeNode, &$byParent, &$out, &$newRef) {
             $pad = str_repeat('  ', $indent);
+            $st  = NodeStyle::resolve($n);
+            $p   = fn(string $line) => $out[] = "{$pad}    {$line}";
 
             $out[] = "{$pad}<Item class=\"{$n['robloxClass']}\" referent=\"" . $newRef() . '">';
             $out[] = "{$pad}  <Properties>";
-            $out[] = "{$pad}    <string name=\"Name\">" . htmlspecialchars($n['name']) . "</string>";
-            $out[] = "{$pad}    <UDim2 name=\"Position\"><XS>0</XS><XO>{$n['x']}</XO><YS>0</YS><YO>{$n['y']}</YO></UDim2>";
-            $out[] = "{$pad}    <UDim2 name=\"Size\"><XS>0</XS><XO>{$n['w']}</XO><YS>0</YS><YO>{$n['h']}</YO></UDim2>";
-            $out[] = "{$pad}    <Color3 name=\"BackgroundColor3\"><R>" . round($n['bg']['r'], 4) . "</R><G>" . round($n['bg']['g'], 4) . "</G><B>" . round($n['bg']['b'], 4) . "</B></Color3>";
-            $out[] = "{$pad}    <float name=\"BackgroundTransparency\">" . round(1 - $n['bg']['a'], 4) . "</float>";
-            $out[] = "{$pad}    <int name=\"BorderSizePixel\">" . ($n['borderW'] > 0 ? max(1, (int)$n['borderW']) : 0) . "</int>";
+            $p('<string name="Name">' . self::x($n['name']) . '</string>');
+            $p("<UDim2 name=\"Position\"><XS>0</XS><XO>{$n['x']}</XO><YS>0</YS><YO>{$n['y']}</YO></UDim2>");
+            $p("<UDim2 name=\"Size\"><XS>0</XS><XO>{$n['w']}</XO><YS>0</YS><YO>{$n['h']}</YO></UDim2>");
+            $p(self::color3('BackgroundColor3', $st['bgColor']));
+            $p('<float name="BackgroundTransparency">' . $st['bgTransparency'] . '</float>');
+            $p('<int name="BorderSizePixel">0</int>');
+            if ($st['clips'])          $p('<bool name="ClipsDescendants">true</bool>');
+            if (!empty($n['selfHidden'])) $p('<bool name="Visible">false</bool>');
 
-            if (!empty($n['selfHidden'])) {
-                $out[] = "{$pad}    <bool name=\"Visible\">false</bool>";
-            }
-            if ($n['borderW'] > 0) {
-                $out[] = "{$pad}    <Color3 name=\"BorderColor3\"><R>" . round($n['borderColor']['r'], 4) . "</R><G>" . round($n['borderColor']['g'], 4) . "</G><B>" . round($n['borderColor']['b'], 4) . "</B></Color3>";
-            }
-
-            if (in_array($n['robloxClass'], ['TextLabel','TextButton','TextBox'])) {
-                $txt = $n['text'] ?: ($n['value'] ?: ($n['placeholder'] ?: ''));
-                $out[] = "{$pad}    <string name=\"Text\">" . htmlspecialchars($txt) . "</string>";
-                $out[] = "{$pad}    <Color3 name=\"TextColor3\"><R>" . round($n['fg']['r'], 4) . "</R><G>" . round($n['fg']['g'], 4) . "</G><B>" . round($n['fg']['b'], 4) . "</B></Color3>";
-                $out[] = "{$pad}    <float name=\"TextTransparency\">" . round(1 - $n['fg']['a'], 4) . "</float>";
-                $out[] = "{$pad}    <int name=\"TextSize\">" . max(11, (int)$n['fontSize']) . "</int>";
-                $txtForFont = $n['text'] ?: ($n['value'] ?: ($n['placeholder'] ?: ''));
-                $isIconChar = (preg_match('/[^\x00-\x7F]/u', $txtForFont) !== 0) && (mb_strlen($txtForFont) <= 3);
-                $fontToken = $isIconChar ? 1 : 16;
-                $out[] = "{$pad}    <token name=\"Font\">{$fontToken}</token>";
-                $xa = $n['textAlign'] === 'center' ? 1 : (($n['textAlign'] === 'right' || $n['textAlign'] === 'end') ? 2 : 0);
-                $out[] = "{$pad}    <token name=\"TextXAlignment\">{$xa}</token>";
-                $out[] = "{$pad}    <token name=\"TextYAlignment\">1</token>";
-                $out[] = "{$pad}    <bool name=\"TextWrapped\">true</bool>";
-                $out[] = "{$pad}    <bool name=\"TextScaled\">false</bool>";
-                if ($n['robloxClass'] === 'TextButton') {
-                    $out[] = "{$pad}    <bool name=\"AutoButtonColor\">false</bool>";
-                }
+            if ($t = $st['text']) {
+                $f = $t['font'];
+                $p('<string name="Text">' . self::x($t['value']) . '</string>');
+                $p('<bool name="RichText">' . ($t['rich'] ? 'true' : 'false') . '</bool>');
+                $p(self::color3('TextColor3', $t['color']));
+                $p('<float name="TextTransparency">' . $t['transparency'] . '</float>');
+                $p("<float name=\"TextSize\">{$t['size']}</float>");
+                $p("<Font name=\"FontFace\"><Family><url>{$f['url']}</url></Family><Weight>{$f['weightNum']}</Weight><Style>{$f['style']}</Style></Font>");
+                $p('<token name="TextXAlignment">' . self::TEXT_X[$t['alignX']] . '</token>');
+                $p('<token name="TextYAlignment">' . self::TEXT_Y[$t['alignY']] . '</token>');
+                $p('<bool name="TextWrapped">' . ($t['wrapped'] ? 'true' : 'false') . '</bool>');
+                $p('<bool name="TextScaled">false</bool>');
+                if ($n['robloxClass'] === 'TextButton') $p('<bool name="AutoButtonColor">false</bool>');
                 if ($n['robloxClass'] === 'TextBox') {
-                    $out[] = "{$pad}    <string name=\"PlaceholderText\">" . htmlspecialchars($n['placeholder'] ?: '') . "</string>";
-                    $out[] = "{$pad}    <bool name=\"ClearTextOnFocus\">false</bool>";
+                    $p('<string name="PlaceholderText">' . self::x($t['placeholder']) . '</string>');
+                    $p('<bool name="ClearTextOnFocus">false</bool>');
                 }
             }
             if ($n['robloxClass'] === 'ImageLabel') {
-                $out[] = "{$pad}    <Content name=\"Image\"><url>" . htmlspecialchars($n['src']) . "</url></Content>";
-                $out[] = "{$pad}    <token name=\"ScaleType\">0</token>";
+                $p('<Content name="Image"><url>' . self::x($n['src'] ?? '') . '</url></Content>');
+                $p('<token name="ScaleType">4</token>'); // Crop ≈ object-fit: cover
             }
-
             $out[] = "{$pad}  </Properties>";
 
-            if ($n['radius'] > 0) {
-                $out[] = "{$pad}  <Item class=\"UICorner\" referent=\"" . $newRef() . '">';
+            // ==== Child modifier (UICorner, UIStroke, UIGradient, UIPadding) ====
+            $modifier = function (string $class, array $props) use (&$out, &$newRef, $pad) {
+                $out[] = "{$pad}  <Item class=\"{$class}\" referent=\"" . $newRef() . '">';
                 $out[] = "{$pad}    <Properties>";
-                $out[] = "{$pad}      <string name=\"Name\">UICorner</string>";
-                $out[] = "{$pad}      <UDim name=\"CornerRadius\"><S>0</S><O>{$n['radius']}</O></UDim>";
+                $out[] = "{$pad}      <string name=\"Name\">{$class}</string>";
+                foreach ($props as $line) $out[] = "{$pad}      {$line}";
                 $out[] = "{$pad}    </Properties>";
                 $out[] = "{$pad}  </Item>";
+            };
+
+            if ($st['cornerRadius'] > 0) {
+                $modifier('UICorner', ["<UDim name=\"CornerRadius\"><S>0</S><O>{$st['cornerRadius']}</O></UDim>"]);
             }
 
-            if (!empty($n['gradient'])) {
-                $out[] = "{$pad}  <Item class=\"UIGradient\" referent=\"" . $newRef() . '">';
-                $out[] = "{$pad}    <Properties>";
-                $out[] = "{$pad}      <string name=\"Name\">UIGradient</string>";
-                $out[] = "{$pad}      <float name=\"Rotation\">" . round($n['gradient']['rotation'], 1) . "</float>";
-                $out[] = "{$pad}      <ColorSequence name=\"Color\">";
-                foreach ($n['gradient']['keypoints'] as $kp) {
-                    $t = max(0, min(1, $kp['pos']));
-                    $out[] = "{$pad}        <ColorSequenceKeypoint>";
-                    $out[] = "{$pad}          <float name=\"Time\">" . round($t, 4) . "</float>";
-                    $out[] = "{$pad}          <Color3 name=\"Value\"><R>" . round($kp['color']['r'], 4) . "</R><G>" . round($kp['color']['g'], 4) . "</G><B>" . round($kp['color']['b'], 4) . "</B></Color3>";
-                    $out[] = "{$pad}        </ColorSequenceKeypoint>";
+            if ($s = $st['stroke']) {
+                $modifier('UIStroke', [
+                    '<token name="ApplyStrokeMode">1</token>', // Border
+                    self::color3('Color', $s['color']),
+                    "<float name=\"Thickness\">{$s['thickness']}</float>",
+                    "<float name=\"Transparency\">{$s['transparency']}</float>",
+                ]);
+            }
+
+            if ($g = $st['gradient']) {
+                // Format rbxmx: "time r g b 0" per keypoint / "time value envelope"
+                $colors = $alphas = '';
+                foreach ($g['keypoints'] as $kp) {
+                    $t = round(max(0, min(1, $kp['pos'])), 4);
+                    $colors .= sprintf('%s %s %s %s 0 ', $t, round($kp['color']['r'], 4), round($kp['color']['g'], 4), round($kp['color']['b'], 4));
+                    $alphas .= sprintf('%s %s 0 ', $t, round(1 - $kp['color']['a'], 4));
                 }
-                $out[] = "{$pad}      </ColorSequence>";
-                $out[] = "{$pad}      <NumberSequence name=\"Transparency\">";
-                foreach ($n['gradient']['keypoints'] as $kp) {
-                    $t = max(0, min(1, $kp['pos']));
-                    $a = round(1 - $kp['color']['a'], 4);
-                    $out[] = "{$pad}        <NumberSequenceKeypoint>";
-                    $out[] = "{$pad}          <float name=\"Time\">" . round($t, 4) . "</float>";
-                    $out[] = "{$pad}          <float name=\"Value\">{$a}</float>";
-                    $out[] = "{$pad}        </NumberSequenceKeypoint>";
-                }
-                $out[] = "{$pad}      </NumberSequence>";
-                $out[] = "{$pad}    </Properties>";
-                $out[] = "{$pad}  </Item>";
+                $modifier('UIGradient', [
+                    '<float name="Rotation">' . round($g['rotation'], 1) . '</float>',
+                    "<ColorSequence name=\"Color\">{$colors}</ColorSequence>",
+                    "<NumberSequence name=\"Transparency\">{$alphas}</NumberSequence>",
+                ]);
             }
 
-            if (($n['padL'] || $n['padR'] || $n['padT'] || $n['padB']) && in_array($n['robloxClass'], ['TextLabel','TextButton','TextBox'])) {
-                $out[] = "{$pad}  <Item class=\"UIPadding\" referent=\"" . $newRef() . '">';
-                $out[] = "{$pad}    <Properties>";
-                $out[] = "{$pad}      <string name=\"Name\">UIPadding</string>";
-                $out[] = "{$pad}      <UDim name=\"PaddingLeft\"><S>0</S><O>{$n['padL']}</O></UDim>";
-                $out[] = "{$pad}      <UDim name=\"PaddingRight\"><S>0</S><O>{$n['padR']}</O></UDim>";
-                $out[] = "{$pad}      <UDim name=\"PaddingTop\"><S>0</S><O>{$n['padT']}</O></UDim>";
-                $out[] = "{$pad}      <UDim name=\"PaddingBottom\"><S>0</S><O>{$n['padB']}</O></UDim>";
-                $out[] = "{$pad}    </Properties>";
-                $out[] = "{$pad}  </Item>";
+            if ($pd = $st['padding']) {
+                $modifier('UIPadding', [
+                    "<UDim name=\"PaddingLeft\"><S>0</S><O>{$pd['L']}</O></UDim>",
+                    "<UDim name=\"PaddingRight\"><S>0</S><O>{$pd['R']}</O></UDim>",
+                    "<UDim name=\"PaddingTop\"><S>0</S><O>{$pd['T']}</O></UDim>",
+                    "<UDim name=\"PaddingBottom\"><S>0</S><O>{$pd['B']}</O></UDim>",
+                ]);
             }
 
-            $children = $byParent[(string)$n['id']] ?? [];
-            foreach ($children as $c) $writeNode($c, $indent + 1);
+            foreach ($byParent[(string)$n['id']] ?? [] as $c) $writeNode($c, $indent + 1);
 
             $out[] = "{$pad}</Item>";
         };
@@ -173,5 +165,13 @@ class RbxmxGenerator {
         $out[] = '</roblox>';
 
         return implode("\n", $out);
+    }
+
+    private static function color3(string $name, array $c): string {
+        return "<Color3 name=\"{$name}\"><R>" . round($c['r'], 4) . '</R><G>' . round($c['g'], 4) . '</G><B>' . round($c['b'], 4) . '</B></Color3>';
+    }
+
+    private static function x($s): string {
+        return htmlspecialchars((string)$s, ENT_XML1 | ENT_QUOTES, 'UTF-8');
     }
 }

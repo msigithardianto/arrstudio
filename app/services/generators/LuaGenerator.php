@@ -125,7 +125,7 @@ class LuaGenerator {
                     $openX = (int)$panel['x'];
                     $openY = (int)$panel['y'];
                     $closedX = $openX + 30;
-                    $bgTarget = round(1 - $panel['bg']['a'], 3);
+                    $bgTarget = NodeStyle::resolve($panel)['bgTransparency'];
                     $tweenVar = 'tweenInfo_' . preg_replace('/[^A-Za-z0-9_]/', '', $panel['name']) . '_' . $panel['id'];
 
                     $L[] = "    local {$tweenVar} = TweenInfo.new({$dur}, {$ease})";
@@ -143,7 +143,7 @@ class LuaGenerator {
 
                 foreach ($group['panels'] as $panel) {
                     $pv = $varMap[$panel['id']];
-                    $bgTarget = round(1 - $panel['bg']['a'], 3);
+                    $bgTarget = NodeStyle::resolve($panel)['bgTransparency'];
                     $tweenVar = 'tweenInfo_' . preg_replace('/[^A-Za-z0-9_]/', '', $panel['name']) . '_' . $panel['id'];
 
                     $L[] = "        if {$pv} then";

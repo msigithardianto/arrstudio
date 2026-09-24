@@ -60,6 +60,13 @@ async function apiConvert(html, rectMap) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ html, rectMap }),
   });
+  if (res.status === 429) {
+    const info = await res.json().catch(() => ({}));
+    window.GuestLimit?.sync({ uses: info.uses, max: info.max });
+    const err = new Error('Kuota gratis habis. Login untuk lanjut.');
+    err.guestLimit = true;
+    throw err;
+  }
   if (!res.ok) throw new Error('convert.php: ' + res.status);
   return res.json();
 }
@@ -125,7 +132,63 @@ window.addEventListener('resize', () => {
 /* ============================================================
    CONVERT FLOW
    ============================================================ */
-async function convert() {
+/* Guest: generate Lua hanya lewat tombol Convert (hemat kuota).
+   Login: auto-convert tiap ketik. */
+const isManualMode = () => !window.__isLoggedIn;
+
+// Dipanggil saat isi editor berubah
+function scheduleConvert(delay = 350) {
+  clearTimeout(window.__debounceT);
+  window.__debounceT = setTimeout(() => convert({ previewOnly: isManualMode() }), delay);
+}
+
+// Tombol ⚡ Convert / Ctrl+Enter
+async function runConvert() {
+  clearTimeout(window.__debounceT);
+  if (!window.__isLoggedIn && window.GuestLimit?.isExceeded()) {
+    window.__showLoginGate?.();
+    return;
+  }
+  const btn = $('btnConvert');
+  btn?.classList.add('is-loading');
+  try {
+    await convert({ previewOnly: false });
+  } finally {
+    btn?.classList.remove('is-loading');
+  }
+}
+
+// Output belum sesuai dengan isi editor → minta user klik Convert
+function markOutputStale() {
+  const luaStatus = ref.luaStatus;
+  if (luaStatus) luaStatus.textContent = 'Belum di-convert — klik ⚡ Convert';
+  $('btnConvert')?.classList.add('is-stale');
+
+  const outputBody = ref.outputBody;
+  const hasOutput = Object.values(cache).some(Boolean);
+  if (outputBody && !hasOutput) {
+    const left = window.GuestLimit ? window.GuestLimit.getRemaining() : 0;
+    outputBody.innerHTML = `<span class="tok-cmt">-- Preview HTML sudah tampil.\n-- Klik ⚡ Convert (atau Ctrl+Enter) untuk generate Lua.\n-- Sisa kuota gratis: ${left}/${window.GuestLimit?.MAX ?? 3}</span>`;
+  }
+}
+
+// Label tombol Convert: tampilkan sisa kuota untuk guest
+function updateConvertButton() {
+  const quota = $('convertQuota');
+  if (!quota) return;
+  if (window.__isLoggedIn || !window.GuestLimit) {
+    quota.textContent = '';
+    quota.hidden = true;
+    return;
+  }
+  const left = window.GuestLimit.getRemaining();
+  quota.hidden = false;
+  quota.textContent = `${left}/${window.GuestLimit.MAX}`;
+  quota.classList.toggle('is-empty', left <= 0);
+}
+
+async function convert(options = {}) {
+  const previewOnly = !!options.previewOnly;
   const htmlIn = ref.htmlIn;
   const frame  = ref.frame;
   const outputBody = ref.outputBody;
@@ -178,9 +241,16 @@ async function convert() {
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
   if (myToken !== convertToken) return;
 
-  let rectMap = [];
+  // Mode guest: cukup preview HTML, generate Lua nunggu tombol Convert
+  if (previewOnly) {
+    markOutputStale();
+    return;
+  }
+
+  // HTML yang dikirim = hasil render browser (sudah ditandai data-arrr-idx)
+  let measured = { rectMap: [], html };
   try {
-    rectMap = await measureRectMap(fd.body, fd);
+    measured = await measureRectMap(fd.body, fd);
   } catch (e) {
     console.error('Measure error:', e);
   }
@@ -188,7 +258,13 @@ async function convert() {
   if (myToken !== convertToken) return;
 
   try {
-    const parsed = await apiConvert(html, rectMap);
+    const parsed = await apiConvert(measured.html, measured.rectMap);
+    if (parsed.guest) {
+      window.GuestLimit?.sync(parsed.guest);
+      updateConvertButton();
+      if (parsed.guest.remaining === 1) showToast('Tersisa 1 kuota gratis. Login untuk unlimited.', 'warning');
+      else if (parsed.guest.remaining === 0) showToast('Kuota gratis habis. Login untuk lanjut.', 'warning');
+    }
     if (parsed.error) throw new Error(parsed.error);
     if (myToken !== convertToken) return;
     lastNodes = parsed.nodes;
@@ -222,8 +298,14 @@ async function convert() {
 
     const luaStatus = ref.luaStatus;
     if (luaStatus) luaStatus.textContent = 'Generated';
+    $('btnConvert')?.classList.remove('is-stale');
     if (autoFit) { zoom = computeFitZoom(); applyZoom(); }
   } catch (e) {
+    if (e.guestLimit) {
+      updateConvertButton();
+      window.__showLoginGate?.();
+      return;
+    }
     console.error(e);
     if (myToken === convertToken && outputBody) {
       outputBody.innerHTML = `<span class="tok-cmt">-- error: ${escapeHtml(e.message)} --</span>`;
@@ -233,124 +315,334 @@ async function convert() {
   }
 }
 
+/* ============================================================
+   MEASURE — browser yang menghitung layout & CSS final
+   (stylesheet, class, flex/grid, %, em, inheritance), lalu
+   hasilnya dikirim ke server.
+
+   Return:
+   - html    : isi <body> yang tiap elemennya sudah diberi data-arrr-idx
+   - rectMap : [{ idx, parentIdx, x, y, w, h, selfHidden, merged,
+                  text, rich, style: {computed css} }]
+   ============================================================ */
+
+// Tidak pernah jadi node & tidak ditelusuri
+const MEASURE_SKIP = new Set([
+  'script', 'style', 'meta', 'link', 'title', 'head', 'template', 'noscript',
+  'option', 'optgroup', 'datalist', 'param', 'source', 'track', 'base', 'wbr',
+]);
+// Jadi node, tapi isinya tidak ditelusuri
+const MEASURE_LEAF = new Set([
+  'svg', 'canvas', 'video', 'audio', 'iframe', 'object', 'embed', 'img', 'input',
+  'textarea', 'select', 'math', 'progress', 'meter', 'hr',
+]);
+// Properti computed style yang dipakai parser
+const MEASURE_PROPS = [
+  'display', 'position', 'visibility', 'opacity', 'z-index', 'cursor',
+  'color', 'background-color', 'background-image',
+  'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width',
+  'border-top-color', 'border-top-style',
+  'border-top-left-radius', 'border-top-right-radius',
+  'border-bottom-right-radius', 'border-bottom-left-radius',
+  'padding-top', 'padding-right', 'padding-bottom', 'padding-left',
+  'font-family', 'font-size', 'font-weight', 'font-style', 'line-height',
+  'text-align', 'text-transform', 'text-decoration-line', 'white-space',
+  'overflow-x', 'overflow-y', 'object-fit',
+  'flex-direction', 'justify-content', 'align-items',
+  'transition', 'transform', 'box-shadow', 'text-shadow', 'filter',
+  'backdrop-filter', 'clip-path', 'mix-blend-mode',
+];
+// Nilai default — tidak perlu dikirim (hemat payload)
+const MEASURE_DEFAULTS = new Set([
+  'none', 'normal', 'auto', '0px', 'rgba(0, 0, 0, 0)', 'static', 'visible',
+  'start', 'all', 'all 0s ease 0s', 'fill',
+]);
+
 async function measureRectMap(rootEl, iframeDoc) {
-  const allEls = [rootEl, ...rootEl.querySelectorAll('*')];
+  const win = iframeDoc.defaultView;
+  const cs  = (el) => win.getComputedStyle(el);
 
-  const hiddenSet = new Set();
-  for (const el of allEls) {
-    if (el.nodeType !== 1) continue;
-    const s = el.style;
-    if (s.display === 'none' || s.visibility === 'hidden') hiddenSet.add(el);
-  }
+  // Semua elemen yang relevan (urutan dokumen), di luar SKIP & isi LEAF
+  const elements = [];
+  (function collect(parent) {
+    for (const el of parent.children) {
+      const tag = el.tagName.toLowerCase();
+      if (MEASURE_SKIP.has(tag)) continue;
+      elements.push(el);
+      if (!MEASURE_LEAF.has(tag)) collect(el);
+    }
+  })(rootEl);
 
+  // Simpan style attribute asli → dipulihkan setelah ukur
+  const savedStyle = new Map();
+  const force = (el, prop, value) => {
+    if (!savedStyle.has(el)) savedStyle.set(el, el.getAttribute('style'));
+    el.style.setProperty(prop, value, 'important');
+  };
+
+  // ==== 1. Elemen hidden (inline ATAU lewat CSS) → tampilkan sementara ====
   const hiddenRoots = new Set();
-  for (const el of hiddenSet) {
-    let parent = el.parentElement;
-    let parentHidden = false;
-    while (parent && parent !== rootEl) {
-      if (hiddenSet.has(parent)) { parentHidden = true; break; }
-      parent = parent.parentElement;
+  for (const el of elements) {
+    const s = cs(el);
+    const parentVis = el.parentElement ? cs(el.parentElement).visibility : 'visible';
+    const hiddenByDisplay = s.display === 'none';
+    const hiddenByVis     = s.visibility === 'hidden' && parentVis !== 'hidden';
+    const hiddenByOpacity = parseFloat(s.opacity) === 0;
+    if (!hiddenByDisplay && !hiddenByVis && !hiddenByOpacity) continue;
+
+    // Hanya root-nya yang ditandai (anak ikut tersembunyi lewat parent)
+    let p = el.parentElement, insideHidden = false;
+    while (p && p !== rootEl) {
+      if (hiddenRoots.has(p)) { insideHidden = true; break; }
+      p = p.parentElement;
     }
-    if (!parentHidden) hiddenRoots.add(el);
+    if (!insideHidden) hiddenRoots.add(el);
+
+    if (hiddenByDisplay) force(el, 'display', 'block');
+    if (hiddenByVis)     force(el, 'visibility', 'visible');
+    if (hiddenByOpacity) force(el, 'opacity', '1');
+    // Panel slide-in biasanya digeser pakai transform — ukur di posisi aslinya
+    if (s.transform && s.transform !== 'none') force(el, 'transform', 'none');
   }
 
-  const saved = [];
-  for (const el of hiddenSet) {
-    saved.push({ el, display: el.style.display, visibility: el.style.visibility });
-    el.style.display = '';
-    el.style.visibility = '';
-  }
-
-  const transformSaved = [];
-  for (const el of allEls) {
-    if (el.nodeType !== 1) continue;
-    const t = el.style.transform;
-    if (t && t !== 'none') {
-      transformSaved.push({ el, transform: t });
-      el.style.transform = 'none';
+  // ==== 2. Baca computed style (sebelum overflow diubah) ====
+  const styles = new Map();
+  for (const el of elements) {
+    const s = cs(el);
+    const parentCursor = el.parentElement ? cs(el.parentElement).cursor : 'auto';
+    const out = {};
+    for (const prop of MEASURE_PROPS) {
+      let v = s.getPropertyValue(prop);
+      // cursor diwariskan — kirim hanya kalau di-set di elemen ini
+      if (prop === 'cursor' && v === parentCursor) continue;
+      if (prop === 'opacity' && v === '1') continue;
+      if (v === '' || (MEASURE_DEFAULTS.has(v) && prop !== 'display' && prop !== 'color')) continue;
+      out[prop] = v;
     }
+    styles.set(el, out);
   }
 
-  const overflowSaved = [];
-  for (const el of allEls) {
-    if (el.nodeType !== 1) continue;
-    const oy = el.style.overflowY;
-    const o = el.style.overflow;
-    if (oy === 'auto' || oy === 'scroll' || o === 'auto' || o === 'scroll') {
-      overflowSaved.push({ el, overflowY: oy, overflow: o });
-      el.style.overflowY = 'visible';
-      el.style.overflow = 'visible';
+  // ==== 3. Konten scroll → tampilkan penuh supaya anak terukur utuh ====
+  for (const el of elements) {
+    const s = styles.get(el);
+    if (/(auto|scroll)/.test((s['overflow-y'] || '') + (s['overflow-x'] || ''))) {
+      force(el, 'overflow', 'visible');
     }
   }
 
   void rootEl.offsetHeight;
-  void iframeDoc.body.offsetHeight;
-
   await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(() => setTimeout(r, 30))));
 
-  const containerRect = rootEl.getBoundingClientRect();
+  // ==== 4. Tentukan node vs teks inline yang digabung (RichText) ====
+  const idxOf = new Map();
+  elements.forEach((el, i) => idxOf.set(el, i));
+  const merged = new Set();
+
+  const hasDirectText = (el) => Array.from(el.childNodes)
+    .some(n => n.nodeType === 3 && n.textContent.trim() !== '');
+
+  const noBox = (s) => {
+    const zero = (v) => !v || parseFloat(v) === 0;
+    return (!s['background-color'] || s['background-color'] === 'rgba(0, 0, 0, 0)')
+      && !s['background-image']
+      && zero(s['border-top-width']) && zero(s['border-right-width'])
+      && zero(s['border-bottom-width']) && zero(s['border-left-width'])
+      && zero(s['padding-left']) && zero(s['padding-right']);
+  };
+
+  // Elemen inline murni (b, strong, em, a, span berwarna, br, ...) → teks parent
+  function canMerge(el) {
+    const tag = el.tagName.toLowerCase();
+    if (tag === 'br') return true;
+    if (MEASURE_SKIP.has(tag) || MEASURE_LEAF.has(tag) || tag === 'button') return false;
+    if (hiddenRoots.has(el)) return false;
+    if (el.id || el.hasAttribute('data-action') || el.hasAttribute('data-target')
+        || el.hasAttribute('onclick') || el.hasAttribute('data-name')) return false;
+    const s = styles.get(el) || {};
+    if (s.display !== 'inline') return false;
+    if (!noBox(s)) return false;
+    // Link/tombol inline hanya digabung kalau memang bagian dari kalimat
+    if (tag === 'a' && !hasDirectText(el.parentElement)) return false;
+    return Array.from(el.children).every(c => MEASURE_SKIP.has(c.tagName.toLowerCase()) || canMerge(c));
+  }
+
+  const escRich = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+
+  const transformText = (t, el) => {
+    const tt = (styles.get(el) || {})['text-transform'];
+    if (tt === 'uppercase') return t.toUpperCase();
+    if (tt === 'lowercase') return t.toLowerCase();
+    if (tt === 'capitalize') return t.replace(/\b\p{L}/gu, c => c.toUpperCase());
+    return t;
+  };
+
+  const toHex = (rgb) => {
+    const m = rgb && rgb.match(/rgba?\(([^)]+)\)/);
+    if (!m) return null;
+    const [r, g, b] = m[1].split(',').map(v => parseFloat(v));
+    return '#' + [r, g, b].map(v => Math.round(v).toString(16).padStart(2, '0')).join('');
+  };
+
+  // Format RichText untuk elemen inline, relatif ke style parent-nya
+  function wrapRich(inner, el, parent) {
+    const s = cs(el), p = cs(parent);
+    let open = '', close = '';
+    const add = (o, c) => { open += o; close = c + close; };
+
+    const fontAttrs = [];
+    if (s.color !== p.color) {
+      const hex = toHex(s.color);
+      if (hex) fontAttrs.push(`color="${hex}"`);
+    }
+    if (s.fontSize !== p.fontSize) fontAttrs.push(`size="${Math.round(parseFloat(s.fontSize))}"`);
+    if (fontAttrs.length) add(`<font ${fontAttrs.join(' ')}>`, '</font>');
+
+    if (parseInt(s.fontWeight, 10) >= 600 && parseInt(p.fontWeight, 10) < 600) add('<b>', '</b>');
+    if (s.fontStyle === 'italic' && p.fontStyle !== 'italic') add('<i>', '</i>');
+    const deco = s.textDecorationLine || '';
+    const pdeco = p.textDecorationLine || '';
+    if (deco.includes('underline') && !pdeco.includes('underline')) add('<u>', '</u>');
+    if (deco.includes('line-through') && !pdeco.includes('line-through')) add('<s>', '</s>');
+
+    return { rich: open + inner + close, formatted: open !== '' };
+  }
+
+  // Teks + RichText dari isi elemen (child element yang digabung ikut masuk)
+  function inlineContent(el) {
+    let text = '', rich = '', formatted = false;
+    for (const n of el.childNodes) {
+      if (n.nodeType === 3) {
+        // Collapse whitespace seperti browser (&nbsp; dipertahankan, white-space:pre* tidak di-collapse)
+        const ws = (styles.get(el) || {})['white-space'] || '';
+        const raw = ws.startsWith('pre') || ws === 'break-spaces'
+          ? n.textContent
+          : n.textContent.replace(/[ \t\n\r\f]+/g, ' ');
+        const t = transformText(raw, el);
+        text += t; rich += escRich(t);
+      } else if (n.nodeType === 1 && merged.has(n)) {
+        if (n.tagName.toLowerCase() === 'br') {
+          text += '\n'; rich += '<br />'; formatted = true;
+          continue;
+        }
+        const sub = inlineContent(n);
+        const w = wrapRich(sub.rich, n, el);
+        text += sub.text; rich += w.rich;
+        formatted = formatted || sub.formatted || w.formatted;
+      }
+    }
+    return { text, rich, formatted };
+  }
+
+  const markMerged = (el) => {
+    merged.add(el);
+    for (const c of el.children) if (!MEASURE_SKIP.has(c.tagName.toLowerCase())) markMerged(c);
+  };
+  for (const el of elements) {
+    if (merged.has(el) || MEASURE_LEAF.has(el.tagName.toLowerCase())) continue;
+    for (const c of el.children) {
+      if (!merged.has(c) && canMerge(c)) markMerged(c);
+    }
+  }
+
+  // ==== 5. Ukur & susun rectMap ====
+  const root = rootEl.getBoundingClientRect();
   const map = [];
 
-  function walk(el, parentIdx) {
-    if (el.nodeType !== Node.ELEMENT_NODE) return;
-    const tag = el.tagName.toLowerCase();
-    const supported = ['div','span','p','button','input','img','h1','h2','h3','h4','h5','h6',
-                       'a','label','ul','ol','li','section','header','footer','main',
-                       'nav','aside','article','textarea','select'];
-    if (!supported.includes(tag)) {
-      for (const c of el.children) walk(c, parentIdx);
-      return;
-    }
-    if (tag === 'option') return;
+  for (const el of elements) {
+    const idx = idxOf.get(el);
+    el.setAttribute('data-arrr-idx', String(idx));
 
-    let x = 0, y = 0;
-    let cur = el;
-    while (cur && cur !== rootEl) {
-      x += cur.offsetLeft || 0;
-      y += cur.offsetTop || 0;
-      cur = cur.offsetParent;
+    if (merged.has(el)) {
+      map.push({ idx, merged: true });
+      continue;
+    }
+
+    // Parent = ancestor terdekat yang juga jadi node
+    let parentIdx = -1;
+    for (let p = el.parentElement; p && p !== rootEl; p = p.parentElement) {
+      if (idxOf.has(p) && !merged.has(p)) { parentIdx = idxOf.get(p); break; }
     }
 
     const r = el.getBoundingClientRect();
-    const rectX = Math.round(r.left - containerRect.left);
-    const rectY = Math.round(r.top - containerRect.top);
+    const w = Math.round(r.width), h = Math.round(r.height);
+    const style = styles.get(el);
 
-    const finalX = (x > 0 || rectX === 0) ? Math.round(x) : rectX;
-    const finalY = (y > 0 || rectY === 0) ? Math.round(y) : rectY;
+    // Radius % → px (CSS clamp ke setengah sisi terpendek)
+    for (const k of ['border-top-left-radius', 'border-top-right-radius',
+                     'border-bottom-right-radius', 'border-bottom-left-radius']) {
+      if (!style[k]) continue;
+      const first = style[k].split(' ')[0];
+      let px = first.endsWith('%') ? parseFloat(first) / 100 * Math.min(w, h) : parseFloat(first);
+      px = Math.min(px || 0, Math.min(w, h) / 2);
+      style[k] = Math.round(px) + 'px';
+    }
 
-    const idx = map.length;
-    const wasHidden = hiddenRoots.has(el);
+    const tag = el.tagName.toLowerCase();
+    let content = { text: '', rich: '', formatted: false };
+    if (tag === 'select') {
+      const opt = el.options && el.options[el.selectedIndex];
+      content.text = opt ? opt.text : '';
+    } else if (tag === 'textarea') {
+      content.text = el.value || '';
+    } else if (!MEASURE_LEAF.has(tag)) {
+      content = inlineContent(el);
+    }
+    const text = content.text.replace(/ *\n */g, '\n').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '');
 
     map.push({
       idx, parentIdx,
-      x: finalX, y: finalY,
-      w: Math.round(r.width), h: Math.round(r.height),
-      selfHidden: wasHidden,
+      x: Math.round(r.left - root.left),
+      y: Math.round(r.top - root.top),
+      w, h,
+      selfHidden: hiddenRoots.has(el),
       id: el.id || '',
       className: (typeof el.className === 'string') ? el.className : '',
+      text,
+      rich: content.formatted
+        ? content.rich.replace(/ *<br \/> */g, '<br />').replace(/^[ \t\n\r\f]+|[ \t\n\r\f]+$/g, '')
+        : '',
+      style,
     });
-
-    for (const c of el.children) walk(c, idx);
   }
 
-  for (const c of rootEl.children) walk(c, -1);
-
-  for (const s of transformSaved) s.el.style.transform = s.transform;
-  for (const s of overflowSaved) {
-    s.el.style.overflowY = s.overflowY;
-    s.el.style.overflow = s.overflow;
-  }
-  for (const s of saved) {
-    s.el.style.display = s.display;
-    s.el.style.visibility = s.visibility;
+  // ==== 6. Pulihkan style asli ====
+  for (const [el, attr] of savedStyle) {
+    if (attr === null) el.removeAttribute('style');
+    else el.setAttribute('style', attr);
   }
 
-  return map;
+  return { rectMap: map, html: rootEl.innerHTML };
 }
 
 /* ============================================================
    ROBLOX PREVIEW RENDERER
    ============================================================ */
+const rgbaCss = (c) => c
+  ? `rgba(${Math.round(c.r * 255)},${Math.round(c.g * 255)},${Math.round(c.b * 255)},${c.a})`
+  : 'transparent';
+
+// Font preview ≈ FontFace Roblox (lihat app/helpers/FontHelper.php)
+function previewFontFamily(css) {
+  const f = String(css || '').toLowerCase();
+  if (/mono|consolas|courier|menlo/.test(f)) return "'Roboto Mono', monospace";
+  if (/(^|,|\s)(serif|georgia|times|merriweather)/.test(f) && !/sans-serif/.test(f.split(',')[0])) return "Merriweather, Georgia, serif";
+  return '';
+}
+
+// RichText Roblox (b, i, u, s, br, font color/size) → HTML aman untuk preview
+function robloxRichToHtml(rich) {
+  return String(rich).replace(/<(\/?)(b|i|u|s|br|font)\b([^>]*)>/g, (m, close, tag, attrs) => {
+    if (tag === 'br') return '<br>';
+    if (tag !== 'font') return `<${close}${tag}>`;
+    if (close) return '</span>';
+    const color = (attrs.match(/color="(#[0-9a-fA-F]{6})"/) || [])[1];
+    const size = (attrs.match(/size="(\d+)"/) || [])[1];
+    const style = [color ? `color:${color}` : '', size ? `font-size:${size}px` : ''].filter(Boolean).join(';');
+    return `<span style="${style}">`;
+  }).replace(/<(?!\/?(b|i|u|s|br|span)\b)/g, '&lt;');
+}
+
 function renderRobloxPreview(nodes) {
   const robloxCanvas = ref.robloxCanvas;
   if (!robloxCanvas) return;
@@ -408,7 +700,7 @@ function renderRobloxPreview(nodes) {
       }).join(', ');
       el.style.background = `linear-gradient(${n.gradient.rotationCss}deg, ${stops})`;
     } else {
-      el.style.background = `rgba(${Math.round(n.bg.r*255)},${Math.round(n.bg.g*255)},${Math.round(n.bg.b*255)},${n.bg.a})`;
+      el.style.background = rgbaCss(n.bg);
     }
 
     el.style.borderRadius = n.radius + 'px';
@@ -419,33 +711,35 @@ function renderRobloxPreview(nodes) {
       el.style.transform = 'translateX(30px)';
     }
 
+    // UIStroke (Border mode) digambar di luar kotak → pakai outline, bukan border
     if (n.borderW > 0 && n.borderColor.a > 0.001) {
       const bs = Math.max(1, Math.round(n.borderW));
-      el.style.border = `${bs}px solid rgba(${Math.round(n.borderColor.r*255)},${Math.round(n.borderColor.g*255)},${Math.round(n.borderColor.b*255)},${n.borderColor.a})`;
+      el.style.boxShadow = `0 0 0 ${bs}px ${rgbaCss(n.borderColor)}`;
     }
+    if (n.clips) el.style.overflow = 'hidden';
+    if (!n.selfHidden && n.opacity !== undefined && n.opacity < 1) el.style.opacity = String(n.opacity);
 
     const isText = ['TextLabel','TextButton','TextBox'].includes(n.robloxClass);
     if (isText) {
       const txt = n.text || n.value || n.placeholder || '';
-      const isBold = (parseInt(n.fontWeight) || 400) >= 700;
+      const alignX = n.textAlign === 'center' ? 'center' : (n.textAlign === 'right' ? 'right' : 'left');
       el.style.display = 'flex';
       el.style.flexDirection = 'column';
-      el.style.justifyContent = 'center';
-      el.style.alignItems = n.textAlign === 'center' ? 'center'
-        : (n.textAlign === 'right' || n.textAlign === 'end') ? 'flex-end' : 'flex-start';
+      el.style.justifyContent = n.textAlignY === 'top' ? 'flex-start' : (n.textAlignY === 'bottom' ? 'flex-end' : 'center');
+      el.style.alignItems = alignX === 'center' ? 'center' : (alignX === 'right' ? 'flex-end' : 'flex-start');
       el.style.padding = `${n.padT}px ${n.padR}px ${n.padB}px ${n.padL}px`;
-      el.style.fontFamily = FONT;
       const span = document.createElement('span');
-      span.textContent = txt;
-      span.style.color = `rgba(${Math.round(n.fg.r*255)},${Math.round(n.fg.g*255)},${Math.round(n.fg.b*255)},${n.fg.a})`;
-      span.style.fontFamily = FONT;
-      span.style.fontWeight = isBold ? '700' : '400';
-      span.style.fontSize = Math.max(6, Math.round(n.fontSize * 0.88)) + 'px';
+      if (n.richText) span.innerHTML = robloxRichToHtml(n.richText);
+      else span.textContent = txt;
+      span.style.color = rgbaCss(n.fg);
+      span.style.fontFamily = previewFontFamily(n.fontFamily) || FONT;
+      span.style.fontWeight = String(parseInt(n.fontWeight, 10) || 400);
+      span.style.fontStyle = n.fontStyle === 'italic' ? 'italic' : 'normal';
+      span.style.fontSize = Math.max(1, Math.round(n.fontSize)) + 'px';
       span.style.lineHeight = '1.2';
-      span.style.whiteSpace = 'pre-wrap';
+      span.style.whiteSpace = n.textWrapped === false ? 'pre' : 'pre-wrap';
       span.style.wordBreak = 'break-word';
-      span.style.textAlign = n.textAlign === 'center' ? 'center'
-        : (n.textAlign === 'right' || n.textAlign === 'end') ? 'right' : 'left';
+      span.style.textAlign = alignX;
       span.style.width = '100%';
       el.appendChild(span);
       if (n.robloxClass === 'TextButton') el.style.cursor = 'pointer';
@@ -664,14 +958,14 @@ async function loadSample(which) {
   const res = await fetch((window.__samplesUrl || 'samples/') + which + '.html');
   htmlIn.value = await res.text();
   syncEditorFromTextarea();
-  convert();
+  convert({ previewOnly: isManualMode() });
 }
 function clearInput() {
   const htmlIn = ref.htmlIn;
   if (!htmlIn) return;
   htmlIn.value = '';
   syncEditorFromTextarea();
-  convert();
+  convert({ previewOnly: true });
 }
 
 /* ============================================================
@@ -793,23 +1087,24 @@ function escapeHtml(s) {
    ============================================================ */
 function highlightHTML(code) {
   if (!code) return '';
-  let html = escapeHtml(code);
-  const tokens = [];
+  const span = (cls, text) => `<span class="${cls}">${escapeHtml(text)}</span>`;
 
-  html = html.replace(/&lt;!--[\s\S]*?--&gt;/g, (m) => {
-    tokens.push(`<span class="tok-comment">${m}</span>`);
-    return `\x00${tokens.length-1}\x00`;
-  });
-  html = html.replace(/=&quot;[^&]*?&quot;/g, (m) => {
-    tokens.push(`<span class="tok-str">${m}</span>`);
-    return `\x01${tokens.length-1}\x01`;
-  });
-  html = html.replace(/(&lt;\/?)([\w:-]+)/g, '$1<span class="tok-tag">$2</span>');
-  html = html.replace(/(&lt;|\/&gt;|&gt;)/g, '<span class="tok-punct">$1</span>');
-  html = html.replace(/(\s)([\w:-]+)(=)/g, '$1<span class="tok-attr">$2</span>$3');
-  html = html.replace(/\x01(\d+)\x01/g, (_, i) => tokens[i]);
-  html = html.replace(/\x00(\d+)\x00/g, (_, i) => tokens[i]);
-  return html + '\n';
+  // Satu kali scan: komentar | tag (dengan atribut) | teks biasa.
+  // Markup hasil highlight tidak pernah di-regex ulang (dulu bikin "class=tok-punct" bocor).
+  return code.replace(/(<!--[\s\S]*?(?:-->|$))|(<\/?)([\w:-]+)([^<>]*?)(\/?>)|([^<]+|<)/g,
+    (m, comment, open, tag, attrs, close, text) => {
+      if (comment) return span('tok-comment', comment);
+      if (text !== undefined) return escapeHtml(text);
+
+      const attrHtml = attrs.replace(/([\w:@.-]+)(?:(\s*=\s*)("[^"]*"|'[^']*'|[^\s"'>]+))?|([^\w:@.-]+)/g,
+        (am, name, eq, value, other) => {
+          if (other !== undefined) return escapeHtml(other);
+          if (!eq) return span('tok-attr', name);
+          return span('tok-attr', name) + escapeHtml(eq) + (value ? span('tok-str', value) : '');
+        });
+
+      return span('tok-punct', open) + span('tok-tag', tag) + attrHtml + span('tok-punct', close);
+    }) + '\n';
 }
 
 function syncEditorFromTextarea() {
@@ -974,43 +1269,17 @@ function bindEditorListeners() {
   htmlIn.dataset.bound = '1';
 
 htmlIn.addEventListener('input', () => {
-  // GUEST GUARD
-  if (!window.__isLoggedIn && typeof window.GuestLimit !== 'undefined') {
-    const text = htmlIn.value;
-    const lastLen = parseInt(htmlIn.dataset.lastLen || '0', 10);
-    const diff = Math.abs(text.length - lastLen);
-
-    // Cuma hitung kalau perubahan "besar" (paste / ganti konten), bukan ketik 1-2 huruf
-    if (diff > 20) {
-      if (window.GuestLimit.isExceeded()) {
-        htmlIn.dataset.lastLen = String(lastLen);
-        htmlIn.value = htmlIn.dataset.lastValue || '';
-        syncEditorFromTextarea();
-        window.__showLoginGate();
-        return;
-      }
-
-      const result = window.GuestLimit.consume();
-      if (result.ok) {
-        htmlIn.dataset.lastLen = String(text.length);
-        htmlIn.dataset.lastValue = text;
-        window.__updateGuestBadge?.();
-
-        if (result.remaining === 1) {
-          showToast('Tersisa 1 kuota gratis. Login untuk unlimited.', 'warning');
-        } else if (result.remaining === 0) {
-          showToast('Kuota habis. Login untuk lanjut.', 'error');
-        }
-      }
-    } else {
-      htmlIn.dataset.lastLen = String(text.length);
-    }
-  }
-
   syncEditorFromTextarea();
   updateCursorPos();
-  clearTimeout(window.__debounceT);
-  window.__debounceT = setTimeout(convert, 350);
+  scheduleConvert();
+});
+
+// Ctrl/Cmd + Enter → Convert
+htmlIn.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+    e.preventDefault();
+    runConvert();
+  }
 });
   htmlIn.addEventListener('scroll', syncEditorScroll, { passive: true });
   htmlIn.addEventListener('keyup', updateCursorPos);
@@ -1080,6 +1349,7 @@ function initConverterApp() {
   if (!isConverterPage()) return;
 
   bindEditorListeners();
+  updateConvertButton();
   initResizers();
 
   syncEditorFromTextarea();
@@ -1113,6 +1383,7 @@ window.zoomOut       = zoomOut;
 window.fitToScreen   = fitToScreen;
 window.loadSample    = loadSample;
 window.clearInput    = clearInput;
+window.runConvert    = runConvert;
 window.switchTab     = switchTab;
 window.copyCurrent   = copyCurrent;
 window.downloadFile  = downloadFile;

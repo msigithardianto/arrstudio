@@ -89,19 +89,14 @@ class FullScriptGenerator {
             $L[] = "local {$v} = Instance.new(\"" . $n['robloxClass'] . "\")";
             $L[] = "{$v}.Name = " . LuaHelper::q($n['name']);
 
-            // Clamp posisi biar nggak keluar canvas
-            $safeX = (int)$n['x'];
-            $safeY = (int)$n['y'];
-            if ($n['w'] > 0 && $safeX + $n['w'] > $W) {
-                $safeX = max(0, $W - $n['w']);
-            }
-            if ($n['h'] > 0 && $safeY + $n['h'] > $H) {
-                $safeY = max(0, $H - $n['h']);
-            }
-            $L[] = "{$v}.Position = UDim2.new(0, {$safeX}, 0, {$safeY})";
+            // Posisi persis hasil render browser (relatif ke parent)
+            $L[] = "{$v}.Position = UDim2.new(0, " . (int)$n['x'] . ", 0, " . (int)$n['y'] . ")";
             $L[] = "{$v}.Size = UDim2.new(0, {$n['w']}, 0, {$n['h']})";
-            $L[] = "{$v}.BackgroundColor3 = Color3.new(" . LuaHelper::c3($n['bg']) . ')';
-            $L[] = "{$v}.BackgroundTransparency = " . round(1 - $n['bg']['a'], 3);
+            $st = NodeStyle::resolve($n);
+            $L[] = "{$v}.BackgroundColor3 = Color3.new(" . LuaHelper::c3($st['bgColor']) . ')';
+            $L[] = "{$v}.BackgroundTransparency = " . $st['bgTransparency'];
+            $L[] = "{$v}.BorderSizePixel = 0";
+            if ($st['clips']) $L[] = "{$v}.ClipsDescendants = true";
             if (!empty($n['selfHidden'])) $L[] = "{$v}.Visible = false";
 
             // Setup ScrollingFrame
@@ -125,62 +120,66 @@ class FullScriptGenerator {
                 $L[] = "{$v}.AutomaticCanvasSize = Enum.AutomaticSize.None";
             }
 
-            if (!empty($n['gradient'])) {
+            if ($st['gradient']) {
                 $L[] = 'do';
                 $L[] = "    local _g = Instance.new(\"UIGradient\")";
-                $L[] = "    _g.Rotation = " . round($n['gradient']['rotation'], 1);
-                $L[] = "    _g.Color = " . LuaHelper::colorSeq($n['gradient']['keypoints']);
-                $L[] = "    _g.Transparency = " . LuaHelper::numSeq($n['gradient']['keypoints']);
+                $L[] = "    _g.Rotation = " . round($st['gradient']['rotation'], 1);
+                $L[] = "    _g.Color = " . LuaHelper::colorSeq($st['gradient']['keypoints']);
+                $L[] = "    _g.Transparency = " . LuaHelper::numSeq($st['gradient']['keypoints']);
                 $L[] = "    _g.Parent = {$v}";
                 $L[] = 'end';
             }
 
-            if (in_array($n['robloxClass'], ['TextLabel','TextButton','TextBox'])) {
-                $txt = $n['text'] ?: ($n['value'] ?: ($n['placeholder'] ?: ''));
-                $L[] = "{$v}.Text = " . LuaHelper::q($txt);
-                $L[] = "{$v}.TextColor3 = Color3.new(" . LuaHelper::c3($n['fg']) . ')';
-                $L[] = "{$v}.TextTransparency = " . round(1 - $n['fg']['a'], 3);
-                $size = max(11, (int)$n['fontSize']);
-                $L[] = "{$v}.TextSize = {$size}";
-                $txtForFont = $n['text'] ?: ($n['value'] ?: ($n['placeholder'] ?: ''));
-                $isIconChar = (preg_match('/[^\x00-\x7F]/u', $txtForFont) !== 0) && (mb_strlen($txtForFont) <= 3);
-                $fontName = $isIconChar
-                    ? 'Arial'
-                    : (intval($n['fontWeight']) >= 700 ? 'SourceSansBold' : 'SourceSans');
-                $L[] = "{$v}.Font = Enum.Font.{$fontName}";
-                $L[] = "{$v}.TextXAlignment = Enum.TextXAlignment." . self::alignLua($n['textAlign']);
-                $L[] = "{$v}.TextYAlignment = Enum.TextYAlignment.Center";
-                $txtLen = mb_strlen($txt);
-                $L[] = "{$v}.TextWrapped = " . ($txtLen > 15 ? 'true' : 'false');
+            if ($t = $st['text']) {
+                $f = $t['font'];
+                $L[] = "{$v}.Text = " . LuaHelper::q($t['value']);
+                if ($t['rich']) $L[] = "{$v}.RichText = true";
+                $L[] = "{$v}.TextColor3 = Color3.new(" . LuaHelper::c3($t['color']) . ')';
+                $L[] = "{$v}.TextTransparency = " . $t['transparency'];
+                $L[] = "{$v}.TextSize = {$t['size']}";
+                $L[] = "{$v}.FontFace = Font.new(" . LuaHelper::q($f['url']) . ", Enum.FontWeight.{$f['weight']}, Enum.FontStyle.{$f['style']})";
+                $L[] = "{$v}.TextXAlignment = Enum.TextXAlignment.{$t['alignX']}";
+                $L[] = "{$v}.TextYAlignment = Enum.TextYAlignment.{$t['alignY']}";
+                $L[] = "{$v}.TextWrapped = " . ($t['wrapped'] ? 'true' : 'false');
                 if ($n['robloxClass'] === 'TextBox') {
-                    $L[] = "{$v}.PlaceholderText = " . LuaHelper::q($n['placeholder'] ?: '');
+                    $L[] = "{$v}.PlaceholderText = " . LuaHelper::q($t['placeholder']);
+                    $L[] = "{$v}.ClearTextOnFocus = false";
                 }
                 if ($n['robloxClass'] === 'TextButton') $L[] = "{$v}.AutoButtonColor = false";
-
-                if ($n['padL'] || $n['padR'] || $n['padT'] || $n['padB']) {
-                    $L[] = 'do';
-                    $L[] = "    local _p = Instance.new(\"UIPadding\")";
-                    $L[] = "    _p.PaddingLeft = UDim.new(0, {$n['padL']})";
-                    $L[] = "    _p.PaddingRight = UDim.new(0, {$n['padR']})";
-                    $L[] = "    _p.PaddingTop = UDim.new(0, {$n['padT']})";
-                    $L[] = "    _p.PaddingBottom = UDim.new(0, {$n['padB']})";
-                    $L[] = "    _p.Parent = {$v}";
-                    $L[] = 'end';
-                }
             }
+
+            if ($p = $st['padding']) {
+                $L[] = 'do';
+                $L[] = "    local _p = Instance.new(\"UIPadding\")";
+                $L[] = "    _p.PaddingLeft = UDim.new(0, {$p['L']})";
+                $L[] = "    _p.PaddingRight = UDim.new(0, {$p['R']})";
+                $L[] = "    _p.PaddingTop = UDim.new(0, {$p['T']})";
+                $L[] = "    _p.PaddingBottom = UDim.new(0, {$p['B']})";
+                $L[] = "    _p.Parent = {$v}";
+                $L[] = 'end';
+            }
+
             if ($n['robloxClass'] === 'ImageLabel') {
-                $L[] = "{$v}.Image = " . LuaHelper::q($n['src']);
+                $L[] = "{$v}.Image = " . LuaHelper::q($n['src'] ?? '');
+                $L[] = "{$v}.ScaleType = Enum.ScaleType.Crop";
             }
 
-            $L[] = "{$v}.BorderSizePixel = " . ($n['borderW'] > 0 ? max(1, (int)$n['borderW']) : 0);
-            if ($n['borderW'] > 0) {
-                $L[] = "{$v}.BorderColor3 = Color3.new(" . LuaHelper::c3($n['borderColor']) . ')';
+            // Border CSS → UIStroke (ikut lengkungan UICorner, beda dengan BorderSizePixel)
+            if ($s = $st['stroke']) {
+                $L[] = 'do';
+                $L[] = "    local _s = Instance.new(\"UIStroke\")";
+                $L[] = "    _s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border";
+                $L[] = "    _s.Color = Color3.new(" . LuaHelper::c3($s['color']) . ')';
+                $L[] = "    _s.Thickness = {$s['thickness']}";
+                $L[] = "    _s.Transparency = {$s['transparency']}";
+                $L[] = "    _s.Parent = {$v}";
+                $L[] = 'end';
             }
 
-            if ($n['radius'] > 0) {
+            if ($st['cornerRadius'] > 0) {
                 $L[] = 'do';
                 $L[] = "    local _c = Instance.new(\"UICorner\")";
-                $L[] = "    _c.CornerRadius = UDim.new(0, {$n['radius']})";
+                $L[] = "    _c.CornerRadius = UDim.new(0, {$st['cornerRadius']})";
                 $L[] = "    _c.Parent = {$v}";
                 $L[] = 'end';
             }
@@ -283,7 +282,7 @@ class FullScriptGenerator {
 
             foreach ($group['panels'] as $panel) {
                 $pv = $vmap[$panel['id']];
-                $bgTarget = round(1 - $panel['bg']['a'], 3);
+                $bgTarget = NodeStyle::resolve($panel)['bgTransparency'];
                 $tweenVar = 'tween_' . $panel['id'];
 
                 $L[] = "    if {$isOpenVar} then";
@@ -443,9 +442,4 @@ class FullScriptGenerator {
         return implode("\n", $L);
     }
 
-    private static function alignLua($a) {
-        if ($a === 'center') return 'Center';
-        if ($a === 'right' || $a === 'end') return 'Right';
-        return 'Left';
-    }
 }

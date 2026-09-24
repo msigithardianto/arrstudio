@@ -112,70 +112,211 @@ class CssHelper
         return $p;
     }
 
+    /**
+     * Parse linear-gradient (inline maupun computed style browser).
+     * Mendukung: tanpa arah, `to <side>`, deg/turn/rad, multi-layer (ambil
+     * layer linear pertama), repeating-linear-gradient.
+     * radial/conic → null (tidak ada padanan di UIGradient; lihat solidFromGradient()).
+     */
     public static function parseGradient($bg) {
-        if (!$bg || stripos($bg, 'linear-gradient') === false) return null;
-        if (!preg_match('/linear-gradient\s*\(\s*([^,]+?)\s*,\s*(.+)\)\s*$/is', $bg, $m)) return null;
+        if (!$bg) return null;
+        $args = self::gradientArgs($bg, 'linear-gradient');
+        if ($args === null) return null;
 
-        $head = trim($m[1]);
-        $stopsRaw = trim($m[2]);
+        $parts = self::splitTopLevel($args);
+        if (!$parts) return null;
 
+        // Argumen pertama arah? (kalau bukan, berarti langsung color stop)
         $rotCss = 180;
-        if (preg_match('/(-?[\d.]+)deg/i', $head, $d)) $rotCss = (float)$d[1];
-        elseif (preg_match('/^to\s+top\s+right/i', $head)) $rotCss = 45;
-        elseif (preg_match('/^to\s+bottom\s+right/i', $head)) $rotCss = 135;
-        elseif (preg_match('/^to\s+bottom\s+left/i', $head)) $rotCss = 225;
-        elseif (preg_match('/^to\s+top\s+left/i', $head)) $rotCss = 315;
-        elseif (preg_match('/^to\s+top/i', $head)) $rotCss = 0;
-        elseif (preg_match('/^to\s+right/i', $head)) $rotCss = 90;
-        elseif (preg_match('/^to\s+bottom/i', $head)) $rotCss = 180;
-        elseif (preg_match('/^to\s+left/i', $head)) $rotCss = 270;
+        $head = strtolower(trim($parts[0]));
+        if (preg_match('/^(-?[\d.]+)(deg|turn|rad|grad)$/', $head, $d)) {
+            $v = (float)$d[1];
+            $rotCss = match ($d[2]) {
+                'turn'  => $v * 360,
+                'rad'   => rad2deg($v),
+                'grad'  => $v * 0.9,
+                default => $v,
+            };
+            array_shift($parts);
+        } elseif (str_starts_with($head, 'to ')) {
+            $dir = preg_replace('/\s+/', ' ', substr($head, 3));
+            $map = [
+                'top' => 0, 'right' => 90, 'bottom' => 180, 'left' => 270,
+                'top right' => 45, 'right top' => 45, 'bottom right' => 135, 'right bottom' => 135,
+                'bottom left' => 225, 'left bottom' => 225, 'top left' => 315, 'left top' => 315,
+            ];
+            $rotCss = $map[$dir] ?? 180;
+            array_shift($parts);
+        }
 
-        $rotRoblox = (($rotCss - 90) % 360 + 360) % 360;
+        // CSS: 0deg = ke atas, 90deg = ke kanan. UIGradient: 0 = kiri→kanan, 90 = atas→bawah
+        $rotRoblox = fmod(fmod($rotCss - 90, 360) + 360, 360);
 
-        $stops = [];
+        $keypoints = [];
+        foreach ($parts as $stop) {
+            $stop = trim($stop);
+            // Color hint (angka saja) diabaikan
+            if (preg_match('/^-?[\d.]+(%|px)?$/', $stop)) continue;
+
+            // Warna + 0..2 posisi (mis. "rgb(0, 0, 0) 10% 40%")
+            $positions = [];
+            while (preg_match('/\s+(-?[\d.]+)(%|px)?\s*$/', $stop, $pm)) {
+                array_unshift($positions, ($pm[2] ?? '') === 'px' ? null : ((float)$pm[1]) / (($pm[2] ?? '') === '%' ? 100 : 1));
+                $stop = rtrim(substr($stop, 0, -strlen($pm[0])));
+            }
+            $color = self::parseColor($stop);
+            if (!$positions) $positions = [null];
+            foreach ($positions as $pos) {
+                $keypoints[] = ['color' => $color, 'pos' => $pos];
+            }
+        }
+
+        $n = count($keypoints);
+        if ($n === 0) return null;
+        if ($n === 1) {
+            $keypoints[] = ['color' => $keypoints[0]['color'], 'pos' => 1];
+            $n = 2;
+        }
+
+        // Posisi kosong → awal 0, akhir 1, sisanya dibagi rata di antara yang diketahui
+        if ($keypoints[0]['pos'] === null) $keypoints[0]['pos'] = 0;
+        if ($keypoints[$n - 1]['pos'] === null) $keypoints[$n - 1]['pos'] = 1;
+        for ($i = 1; $i < $n - 1; $i++) {
+            if ($keypoints[$i]['pos'] !== null) continue;
+            $j = $i;
+            while ($keypoints[$j]['pos'] === null) $j++;
+            $start = $keypoints[$i - 1]['pos'];
+            $step  = ($keypoints[$j]['pos'] - $start) / ($j - $i + 1);
+            for ($k = $i; $k < $j; $k++) $keypoints[$k]['pos'] = $start + $step * ($k - $i + 1);
+        }
+
+        // Posisi harus naik & dalam 0..1 (syarat ColorSequence)
+        $prev = 0.0;
+        foreach ($keypoints as &$kp) {
+            $kp['pos'] = max($prev, min(1, max(0, (float)$kp['pos'])));
+            $prev = $kp['pos'];
+        }
+        unset($kp);
+
+        // ColorSequence wajib mulai di 0 & berakhir di 1, max 20 keypoint
+        if ($keypoints[0]['pos'] > 0) array_unshift($keypoints, ['color' => $keypoints[0]['color'], 'pos' => 0]);
+        if (end($keypoints)['pos'] < 1) $keypoints[] = ['color' => end($keypoints)['color'], 'pos' => 1];
+        $keypoints = array_slice($keypoints, 0, 20);
+        $keypoints[count($keypoints) - 1]['pos'] = 1;
+
+        return [
+            'rotation' => $rotRoblox,
+            'rotationCss' => $rotCss,
+            'keypoints' => array_values($keypoints),
+        ];
+    }
+
+    /**
+     * Warna rata-rata dari radial/conic-gradient (fallback karena UIGradient cuma linear)
+     */
+    public static function solidFromGradient($bg) {
+        foreach (['radial-gradient', 'conic-gradient'] as $fn) {
+            $args = self::gradientArgs((string)$bg, $fn);
+            if ($args === null) continue;
+
+            $colors = [];
+            foreach (self::splitTopLevel($args) as $part) {
+                if (preg_match('/(rgba?\([^)]*\)|hsla?\([^)]*\)|#[0-9a-f]{3,8}\b)/i', $part, $m)) {
+                    $colors[] = self::parseColor($m[1]);
+                }
+            }
+            if (!$colors) return null;
+
+            $avg = ['r' => 0, 'g' => 0, 'b' => 0, 'a' => 0];
+            foreach ($colors as $c) foreach ($avg as $k => $_) $avg[$k] += $c[$k] / count($colors);
+            return $avg;
+        }
+        return null;
+    }
+
+    /** Isi di dalam `<fn>(...)` pertama (termasuk varian repeating-), null kalau tidak ada */
+    private static function gradientArgs(string $bg, string $fn): ?string {
+        if (!preg_match('/(?:repeating-)?' . preg_quote($fn, '/') . '\s*\(/i', $bg, $m, PREG_OFFSET_CAPTURE)) return null;
+        $start = $m[0][1] + strlen($m[0][0]);
+        $depth = 1;
+        for ($i = $start, $len = strlen($bg); $i < $len; $i++) {
+            if ($bg[$i] === '(') $depth++;
+            elseif ($bg[$i] === ')' && --$depth === 0) return substr($bg, $start, $i - $start);
+        }
+        return null;
+    }
+
+    /** Split string di koma level teratas (koma di dalam rgb(...) diabaikan) */
+    private static function splitTopLevel(string $s): array {
+        $parts = [];
         $buf = '';
         $depth = 0;
-        $len = strlen($stopsRaw);
-        for ($i = 0; $i < $len; $i++) {
-            $c = $stopsRaw[$i];
+        for ($i = 0, $len = strlen($s); $i < $len; $i++) {
+            $c = $s[$i];
             if ($c === '(') $depth++;
             elseif ($c === ')') $depth--;
             if ($c === ',' && $depth === 0) {
-                $stops[] = trim($buf);
+                $parts[] = trim($buf);
                 $buf = '';
             } else {
                 $buf .= $c;
             }
         }
-        if (trim($buf) !== '') $stops[] = trim($buf);
+        if (trim($buf) !== '') $parts[] = trim($buf);
+        return $parts;
+    }
 
-        $keypoints = [];
-        foreach ($stops as $s) {
-            $pos = null;
-            if (preg_match('/\s+(-?[\d.]+)(%|px)?\s*$/', $s, $pm)) {
-                $s = trim(substr($s, 0, -strlen($pm[0])));
-                if (($pm[2] ?? '') === '%') $pos = ((float)$pm[1]) / 100;
-                elseif (($pm[2] ?? '') === 'px') $pos = null;
-                else $pos = (float)$pm[1];
-            }
-            $keypoints[] = ['color' => self::parseColor($s), 'pos' => $pos];
+    /**
+     * overflow: hidden/clip → ClipsDescendants
+     */
+    public static function clipsContent(array $style): bool {
+        foreach (['overflow', 'overflow-x', 'overflow-y'] as $prop) {
+            if (in_array($style[$prop] ?? '', ['hidden', 'clip'], true)) return true;
         }
+        return false;
+    }
 
-        $n = count($keypoints);
-        if ($n === 0) return null;
-
-        foreach ($keypoints as $i => &$kp) {
-            if ($kp['pos'] === null) $kp['pos'] = $n === 1 ? 0 : $i / ($n - 1);
+    /**
+     * Perataan horizontal teks: text-align, atau justify-content kalau elemen flex (row)
+     */
+    public static function textAlignX(array $style): string {
+        $display = $style['display'] ?? '';
+        if (str_contains($display, 'flex') && !str_starts_with($style['flex-direction'] ?? 'row', 'column')) {
+            $jc = $style['justify-content'] ?? '';
+            if ($jc === 'center') return 'center';
+            if (in_array($jc, ['flex-end', 'end', 'right'], true)) return 'right';
         }
-        unset($kp);
+        $align = strtolower($style['text-align'] ?? 'left');
+        if (str_contains($align, 'center')) return 'center';
+        if (in_array($align, ['right', 'end', '-webkit-right'], true)) return 'right';
+        return 'left';
+    }
 
-        usort($keypoints, function($a, $b) { return $a['pos'] <=> $b['pos']; });
+    /**
+     * Perataan vertikal teks: tengah untuk tombol / flex align-items:center / satu baris,
+     * atas untuk paragraf multi-baris
+     */
+    public static function textAlignY(array $style, string $tag, int $h, int $lineHeight, string $text): string {
+        $display = $style['display'] ?? '';
+        if (str_contains($display, 'flex')) {
+            $ai = str_starts_with($style['flex-direction'] ?? 'row', 'column')
+                ? ($style['justify-content'] ?? '')
+                : ($style['align-items'] ?? '');
+            if ($ai === 'center') return 'center';
+            if (in_array($ai, ['flex-end', 'end'], true)) return 'bottom';
+        }
+        if (in_array($tag, ['button', 'input', 'select'], true)) return 'center';
+        return self::isMultiline($style, $h, $lineHeight, $text) ? 'top' : 'center';
+    }
 
-        return [
-            'rotation' => $rotRoblox,
-            'rotationCss' => $rotCss,
-            'keypoints' => $keypoints,
-        ];
+    /**
+     * Teks lebih dari 1 baris di browser? (tinggi konten > ~1.5 line-height atau ada \n)
+     */
+    public static function isMultiline(array $style, int $h, int $lineHeight, string $text): bool {
+        if ($text === '') return false;
+        if (str_contains($text, "\n")) return true;
+        $padY = (self::parsePx($style['padding-top'] ?? null) ?? 0) + (self::parsePx($style['padding-bottom'] ?? null) ?? 0);
+        return ($h - $padY) > max(1, $lineHeight) * 1.5;
     }
 
     public static function parseTransition($css) {
