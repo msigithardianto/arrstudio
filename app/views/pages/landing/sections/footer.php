@@ -22,6 +22,7 @@
       <a href="<?= url('ytmp3') ?>">YT → MP3</a>
       <a href="<?= url('spoofer') ?>">Auto Spoof</a>
       <a href="<?= url('history') ?>">Riwayat Upload</a>
+      <a href="<?= url('luaobf') ?>">Lua Obfuscator</a>
     </div>
     <?php endif; ?>
     <div class="lx-footer-col">

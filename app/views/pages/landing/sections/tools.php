@@ -36,6 +36,17 @@ $tools = [
         ],
         'cta' => 'Lihat Riwayat',
     ],
+    [
+        'id'    => 'luaobf',
+        'name'  => 'Lua Obfuscator',
+        'title' => 'Lindungi script, bisa dibalik.',
+        'points' => [
+            ['Reversibel penuh', 'seribet apa pun, kembali jadi kode Lua asli'],
+            ['Tetap jalan', 'output loader yang <code>load()</code> dirinya sendiri di Roblox'],
+            ['Privat', 'diproses di browser, kode tak dikirim ke server'],
+        ],
+        'cta' => 'Buka Lua Obfuscator',
+    ],
 ];
 ?>
 <section class="lx-tools" id="lxTools">
@@ -62,11 +73,15 @@ $tools = [
             <div class="lx-mock-map"><span>logo.png</span><i>→</i><b>18430013</b></div>
             <div class="lx-mock-map"><span>Intro{7722}</span><i>→</i><b>18430014</b></div>
             <div class="lx-mock-pill">✓ 3 aset diizinkan ke game</div>
-          <?php else: ?>
+          <?php elseif ($t['id'] === 'history'): ?>
             <div class="lx-mock-row"><b>Lagu Satu</b><span class="ok">Siap dipakai</span></div>
             <div class="lx-mock-row"><b>logo.png</b><span class="ok">🌐 publik</span></div>
             <div class="lx-mock-row"><b>Lagu Dua</b><span class="run">Direview…</span></div>
             <div class="lx-mock-pill">⧉ Copy 3 ID</div>
+          <?php else: ?>
+            <div class="lx-mock-code">local <b>a</b>="\104\105"<br>print(<b>a</b>)</div>
+            <div class="lx-mock-arrow">obfuscate ↓ &nbsp; deobfuscate ↑</div>
+            <div class="lx-mock-code lx-mock-code--obf">_ARRR="Zk9y…Q=="<br>load(_d(_ARRR))()</div>
           <?php endif; ?>
         </div>
 
