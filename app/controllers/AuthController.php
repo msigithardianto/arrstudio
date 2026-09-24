@@ -19,7 +19,7 @@ class AuthController extends Controller
 
     public function googleRedirect(): void
     {
-        $this->redirect((new OAuthService('google'))->authorizeUrl());
+        $this->redirectToProvider('google');
     }
 
     public function googleCallback(): void
@@ -29,7 +29,7 @@ class AuthController extends Controller
 
     public function discordRedirect(): void
     {
-        $this->redirect((new OAuthService('discord'))->authorizeUrl());
+        $this->redirectToProvider('discord');
     }
 
     public function discordCallback(): void
@@ -41,6 +41,16 @@ class AuthController extends Controller
     {
         Auth::logout();
         $this->redirect(url('landing'));
+    }
+
+    private function redirectToProvider(string $provider): void
+    {
+        $oauth = new OAuthService($provider);
+        if (!$oauth->isConfigured()) {
+            $key = strtoupper($provider);
+            $this->failLogin("Login {$provider} belum dikonfigurasi: isi {$key}_CLIENT_ID dan {$key}_CLIENT_SECRET di file .env (root project).");
+        }
+        $this->redirect($oauth->authorizeUrl());
     }
 
     /**

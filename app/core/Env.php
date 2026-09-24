@@ -11,8 +11,12 @@ class Env
             return;
         }
 
-        foreach (file($file, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        // Buang BOM (Notepad Windows) + dukung CRLF
+        $content = preg_replace('/^\xEF\xBB\xBF/', '', (string)file_get_contents($file));
+
+        foreach (preg_split('/\r\n|\r|\n/', $content) as $line) {
             $line = trim($line);
+            if (str_starts_with($line, 'export ')) $line = substr($line, 7);
             if ($line === '' || $line[0] === '#' || strpos($line, '=') === false) {
                 continue;
             }
