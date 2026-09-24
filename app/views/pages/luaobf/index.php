@@ -68,7 +68,8 @@ $isLoggedIn = Auth::check();
         <li><b>Reversibel penuh</b> — hasil obfuscator ini <b>selalu</b> bisa dikembalikan ke kode Lua asli, berapa pun layer-nya.</li>
         <li><b>Tetap jalan di Roblox</b> — output berupa loader yang mendekode dirinya sendiri lalu <code>load()</code>. Perilaku script tidak berubah.</li>
         <li><b>Privat</b> — proses 100% di browser, kode kamu tidak pernah dikirim ke server.</li>
-        <li><b>Deobfuscate format lain</b> — mendukung obfuscator string-table (gaya <code>XI/dI/II</code> yang beredar untuk script Roblox): semua string didecode statis (tanpa menjalankan kodenya) &amp; disisipkan balik jadi Lua yang bisa dijalankan. Obfuscator VM/bytecode penuh yang lain tetap tidak bisa dibuka otomatis.</li>
+        <li><b>Obfuscator string-table</b> (gaya <code>XI/dI/II</code>) — semua string didecode statis lalu disisipkan &amp; dirapikan jadi Lua yang bisa dijalankan.</li>
+        <li><b>Obfuscator bytecode-VM</b> (Luraph / MoonSec / IronBrew dsb.) — konstanta string-nya didecode &amp; disisipkan supaya terbaca, tapi <b>logikanya</b> sudah dikompilasi jadi bytecode (angka) yang dijalankan VM di dalamnya, sehingga <b>tidak bisa</b> dikembalikan ke source asli secara otomatis (butuh devirtualisasi khusus per-VM). Jaminan “pasti jadi source bersih” hanya untuk hasil obfuscator ARRR ini sendiri.</li>
         <li><b>Gunakan untuk kode milikmu sendiri</b> atau yang kamu punya izinnya.</li>
       </ul>
     </section>
