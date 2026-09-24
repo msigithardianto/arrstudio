@@ -327,7 +327,9 @@ return AudioCompensation
     const r = it.rbx;
     if (!r) return '—';
     if (r.status === 'ok') {
-      return `<a href="https://create.roblox.com/store/asset/${esc(r.assetId)}" target="_blank" rel="noopener" data-no-spa>${esc(r.assetId)}</a>`;
+      // Aset baru selalu private → link ke Creator Dashboard (bukan Creator Store, yang hanya untuk aset publik)
+      return `<a href="https://create.roblox.com/dashboard/creations/store/${esc(r.assetId)}/configure" target="_blank" rel="noopener" data-no-spa title="Buka di Creator Dashboard">${esc(r.assetId)}</a>`
+        + (r.granted ? ' <span class="yt-fx-tag" title="Diizinkan di game">✓ game</span>' : '');
     }
     const text = r.status === 'err' ? r.error : (r.note || (r.status === 'run' ? 'Upload…' : 'Antri'));
     return `<span class="sp-status ${r.status}">${esc(text)}</span>`;
@@ -421,6 +423,8 @@ return AudioCompensation
       const s = JSON.parse(localStorage.getItem(SPOOF_KEY) || '{}');
       if (s.creatorType) $('ytCreatorType').value = s.creatorType;
       if (s.creatorId)   $('ytCreatorId').value   = s.creatorId;
+      if (s.universeId)  $('ytUniverseId').value  = s.universeId;
+      $('ytAutoGrant').checked = !!s.autoGrant;
       if (s.apiKey) {
         $('ytApiKey').value = s.apiKey;
         $('ytRemember').checked = true;
@@ -436,6 +440,8 @@ return AudioCompensation
       const s = JSON.parse(localStorage.getItem(SPOOF_KEY) || '{}');
       s.creatorType = $('ytCreatorType').value;
       s.creatorId   = $('ytCreatorId').value.trim();
+      s.universeId  = $('ytUniverseId').value.trim();
+      s.autoGrant   = $('ytAutoGrant').checked;
       if ($('ytRemember').checked) s.apiKey = $('ytApiKey').value.trim();
       else delete s.apiKey;
       localStorage.setItem(SPOOF_KEY, JSON.stringify(s));
@@ -532,6 +538,41 @@ return AudioCompensation
     setRunning(false);
     renderAll();
     toastUploads();
+    await autoGrant();
+  }
+
+  async function autoGrant() {
+    if ($('ytAutoGrant') && $('ytAutoGrant').checked && /^\d+$/.test($('ytUniverseId').value.trim())) {
+      await grantUploaded(true);
+    }
+  }
+
+  /** Izinkan audio yang sudah ter-upload ke game (Universe ID). silent = dari auto-grant */
+  async function grantUploaded(silent) {
+    const status = (t) => { if ($('ytGrantStatus')) $('ytGrantStatus').textContent = t; };
+    const apiKey     = $('ytApiKey').value.trim();
+    const universeId = $('ytUniverseId').value.trim();
+    const done = items.filter(i => i.rbx && i.rbx.status === 'ok' && !i.rbx.granted);
+    if (!done.length) {
+      if (!silent) showToast('Semua audio sudah diizinkan / belum ada yang ter-upload', 'warning');
+      return;
+    }
+    if (!apiKey) return showToast('Isi API key Roblox dulu', 'error');
+    if (!/^\d+$/.test(universeId)) {
+      $('ytUniverseId').focus();
+      return showToast('Isi Universe ID game (card Upload ke Roblox)', 'error');
+    }
+    if (typeof window.ArrrGrant !== 'function') return showToast('Modul Auto Spoof belum termuat', 'error');
+    saveRobloxSettings();
+
+    status(`Mengizinkan ${done.length} audio ke game ${universeId}…`);
+    const r = await window.ArrrGrant(apiKey, universeId, done.map(i => i.rbx.assetId));
+    done.forEach(i => { if (r.granted.includes(i.rbx.assetId)) i.rbx.granted = true; });
+    const failed = Object.keys(r.failed).length;
+    status(`${r.granted.length}/${done.length} audio diizinkan ke game ${universeId}`
+      + (failed ? ' · gagal: ' + [...new Set(Object.values(r.failed))].join(' | ') : ''));
+    showToast(`${r.granted.length}/${done.length} audio diizinkan ke game`, failed ? 'warning' : 'success', 3500);
+    renderRows();
   }
 
   function toastUploads() {
@@ -614,7 +655,10 @@ return AudioCompensation
     setRunning(false);
     renderAll();
 
-    if (cfg.roblox && toastUploads()) return;
+    if (cfg.roblox && toastUploads()) {
+      await autoGrant();
+      return;
+    }
     const ok = items.filter(i => i.status === 'ok').length;
     showToast(`${ok}/${items.length} video berhasil dikonversi`, ok === items.length ? 'success' : 'warning', 3500);
   }
@@ -742,6 +786,9 @@ return AudioCompensation
     $('ytUploadAll').addEventListener('click', uploadAll);
     $('ytIdFormat').addEventListener('change', renderIds);
     $('ytIdCopy').addEventListener('click', copyIds);
+    $('ytGrant').addEventListener('click', () => grantUploaded(false));
+    $('ytUniverseId').addEventListener('change', saveRobloxSettings);
+    $('ytAutoGrant').addEventListener('change', saveRobloxSettings);
     $('ytToolsUpdate').addEventListener('click', () => installTools(['ytdlp']));
     $('ytToolsRefresh').addEventListener('click', checkTools);
     $('ytScriptDownload').addEventListener('click', downloadScript);

@@ -28,6 +28,8 @@
       const s = JSON.parse(localStorage.getItem(STORE_KEY) || '{}');
       if (s.creatorType) $('spCreatorType').value = s.creatorType;
       if (s.creatorId)   $('spCreatorId').value   = s.creatorId;
+      if (s.universeId)  $('spUniverseId').value  = s.universeId;
+      $('spAutoGrant').checked = !!s.autoGrant;
       if (s.apiKey) {
         $('spApiKey').value = s.apiKey;
         $('spRemember').checked = true;
@@ -40,6 +42,8 @@
       const s = {
         creatorType: $('spCreatorType').value,
         creatorId:   $('spCreatorId').value.trim(),
+        universeId:  $('spUniverseId').value.trim(),
+        autoGrant:   $('spAutoGrant').checked,
       };
       if ($('spRemember').checked) s.apiKey = $('spApiKey').value.trim();
       localStorage.setItem(STORE_KEY, JSON.stringify(s));
@@ -277,6 +281,74 @@
 
     const ok = items.filter(i => i.status === 'ok').length;
     showToast(`${ok}/${items.length} aset berhasil di-upload`, ok === items.length ? 'success' : 'warning', 3500);
+
+    // Otomatis izinkan semua aset baru ke game
+    const universeId = $('spUniverseId') ? $('spUniverseId').value.trim() : '';
+    if (ok && $('spAutoGrant') && $('spAutoGrant').checked && /^\d+$/.test(universeId)) {
+      $('spGrantIds').value = items.filter(i => i.status === 'ok').map(i => i.newId).join('\n');
+      await grantFromBox();
+    }
+  }
+
+  /* ============================================================
+     IZIN GAME MASSAL — helper dipakai juga oleh ytmp3.js
+     ============================================================ */
+  // → {granted:[...], failed:{id: alasan}}
+  async function grantAssets(apiKey, universeId, ids, onProgress) {
+    const granted = [];
+    const failed  = {};
+    // Maks 200 per request (batas server)
+    for (let i = 0; i < ids.length; i += 200) {
+      const part = ids.slice(i, i + 200);
+      if (onProgress) onProgress(i, ids.length);
+      try {
+        const r = await callApi({ action: 'grant', apiKey, universeId, assetIds: part });
+        granted.push(...r.granted);
+        Object.assign(failed, r.failed || {});
+      } catch (e) {
+        part.forEach(id => { failed[id] = e.message; });
+      }
+    }
+    return { granted, failed };
+  }
+  window.ArrrGrant = grantAssets;
+
+  function grantSummaryHtml(r) {
+    const failedIds = Object.keys(r.failed);
+    // Kelompokkan alasan yang sama biar tidak panjang
+    const byReason = {};
+    failedIds.forEach(id => { (byReason[r.failed[id]] = byReason[r.failed[id]] || []).push(id); });
+    const rows = [`<li class="${r.granted.length ? 'ok' : 'warn'}">${r.granted.length} aset diizinkan</li>`]
+      .concat(Object.entries(byReason).map(([reason, list]) =>
+        `<li class="err">${list.length} gagal: ${esc(reason)} <span class="sp-mono">(${esc(list.slice(0, 5).join(', '))}${list.length > 5 ? ', …' : ''})</span></li>`));
+    return `<p><b>${failedIds.length ? 'Sebagian gagal' : 'Semua aset sudah diizinkan ke game'}</b></p><ul>${rows.join('')}</ul>`;
+  }
+  window.ArrrGrantSummary = grantSummaryHtml;
+
+  async function grantFromBox() {
+    const apiKey     = $('spApiKey').value.trim();
+    const universeId = $('spUniverseId').value.trim();
+    const ids        = parseIds($('spGrantIds').value);
+    if (!apiKey) return showToast('Masukkan API key Roblox dulu', 'error');
+    if (!/^\d+$/.test(universeId)) {
+      $('spUniverseId').focus();
+      return showToast('Isi Universe ID game di card 01', 'error');
+    }
+    if (!ids.length) return showToast('Tempel minimal 1 asset ID', 'error');
+    saveSettings();
+
+    const btn = $('spGrant');
+    btn.disabled = true;
+    $('spGrantStatus').textContent = `Mengizinkan ${ids.length} aset…`;
+    const r = await grantAssets(apiKey, universeId, ids);
+    if (!$('spGrant')) return;   // pindah halaman (SPA)
+    btn.disabled = false;
+    $('spGrantStatus').textContent = `${r.granted.length}/${ids.length} diizinkan`;
+    const box = $('spGrantResult');
+    box.hidden = false;
+    box.className = 'sp-check-result ' + (Object.keys(r.failed).length ? 'err' : 'ok');
+    box.innerHTML = grantSummaryHtml(r);
+    showToast(`${r.granted.length}/${ids.length} aset diizinkan ke game`, r.granted.length === ids.length ? 'success' : 'warning', 3500);
   }
 
   /* ============================================================
@@ -398,6 +470,14 @@
 
     root.addEventListener('click', start);
     $('spCheck').addEventListener('click', checkConnection);
+    $('spGrant').addEventListener('click', grantFromBox);
+    $('spGrantFill').addEventListener('click', () => {
+      const ids = items.filter(i => i.status === 'ok').map(i => i.newId);
+      if (!ids.length) return showToast('Belum ada hasil upload', 'warning');
+      $('spGrantIds').value = ids.join('\n');
+    });
+    $('spUniverseId').addEventListener('change', saveSettings);
+    $('spAutoGrant').addEventListener('change', saveSettings);
     $('spStop').addEventListener('click', () => { stopped = true; renderProgress(); });
     $('spFormat').addEventListener('change', renderOutput);
     $('spCopy').addEventListener('click', copyOutput);
