@@ -40,4 +40,39 @@ class LuaHelper
 
     public static function q($s) { return '"' . addcslashes($s, "\\\"\n") . '"'; }
     public static function c3($c) { return sprintf('%.3f, %.3f, %.3f', $c['r'], $c['g'], $c['b']); }
+
+    /**
+     * Nilai PHP → literal Lua (array list / map / string / number / bool / nil)
+     */
+    public static function value($v, int $indent = 0): string {
+        if ($v === null) return 'nil';
+        if (is_bool($v)) return $v ? 'true' : 'false';
+        if (is_int($v) || is_float($v)) return (string)$v;
+        if (!is_array($v)) return self::q((string)$v);
+        if ($v === []) return '{}';
+
+        $pad  = str_repeat('    ', $indent + 1);
+        $end  = str_repeat('    ', $indent);
+        $list = array_is_list($v);
+        $rows = [];
+        foreach ($v as $k => $item) {
+            $key = match (true) {
+                $list                                            => '',
+                is_int($k)                                       => "[{$k}] = ",
+                (bool)preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $k) => "{$k} = ",
+                default                                          => '[' . self::q($k) . '] = ',
+            };
+            $rows[] = $pad . $key . self::value($item, $indent + 1) . ',';
+        }
+        return "{\n" . implode("\n", $rows) . "\n{$end}}";
+    }
+
+    /** "Dragon Sword!" → "DragonSword" (aman untuk key / nama Instance) */
+    public static function ident(string $s, string $fallback = 'Item'): string {
+        $s = preg_replace('/[^A-Za-z0-9 ]+/', ' ', $s);
+        $s = str_replace(' ', '', ucwords(strtolower(trim($s))));
+        if ($s === '' || ctype_digit($s[0])) $s = $fallback . $s;
+        return $s;
+    }
 }
+

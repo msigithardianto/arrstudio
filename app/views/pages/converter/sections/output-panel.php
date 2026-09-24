@@ -18,6 +18,7 @@
     <button data-tab="rbxmx"      class="tab"        onclick="switchTab('rbxmx')">RBXMX</button>
     <button data-tab="plugin"     class="tab"        onclick="switchTab('plugin')">Plugin</button>
     <button data-tab="billboard"  class="tab"        onclick="switchTab('billboard')">👑 Billboard</button>
+    <button data-tab="server"     class="tab" data-group="logic" onclick="switchTab('server')">🧠 Game Logic</button>
     <button data-tab="report"     class="tab"        onclick="switchTab('report')">Report</button>
   </div>
 
@@ -106,6 +107,20 @@
     <button class="plugin-action-btn" onclick="downloadFile('plugin')">⬇ Download Plugin (.lua)</button>
     <button class="plugin-action-btn" onclick="copyCurrent()">📋 Copy Plugin Code</button>
     <button class="plugin-action-btn ghost" onclick="openPluginModal()">❓ Cara Pakai</button>
+  </div>
+
+  <!-- Game Logic: 3 file (ModuleScript / Script / LocalScript) -->
+  <div class="logic-bar hidden" id="logicBar">
+    <div class="logic-files">
+      <button class="logic-file" data-logic="module" onclick="switchTab('module')" title="ReplicatedStorage > ArrUI > GameConfig">📦 GameConfig <small>Module</small></button>
+      <button class="logic-file" data-logic="server" onclick="switchTab('server')" title="ServerScriptService > ArrUIServer">🖥 ArrUIServer <small>Script</small></button>
+      <button class="logic-file" data-logic="client" onclick="switchTab('client')" title="StarterPlayerScripts > ArrUIClient">🎮 ArrUIClient <small>LocalScript</small></button>
+      <button class="logic-file ghost" onclick="downloadFile(currentLogicFile())" title="Download file ini">⬇</button>
+    </div>
+    <div class="logic-meta">
+      <span class="logic-path" id="logicPath"></span>
+      <span class="logic-summary" id="logicSummary"></span>
+    </div>
   </div>
 
   <div id="outputBody"></div>

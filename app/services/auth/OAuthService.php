@@ -19,6 +19,12 @@ class OAuthService
     /**
      * URL authorize provider (+ simpan state anti-CSRF di session)
      */
+    /** Kredensial sudah diisi di .env? */
+    public function isConfigured(): bool
+    {
+        return trim((string)$this->cfg['client_id']) !== '' && trim((string)$this->cfg['client_secret']) !== '';
+    }
+
     public function authorizeUrl(): string
     {
         $state = bin2hex(random_bytes(16));

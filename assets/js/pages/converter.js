@@ -11,7 +11,16 @@ const $ = id => document.getElementById(id);
 let currentTab = 'script';
 let cache = {
   script: '', fullscript: '', tree: '', rbxmx: '',
-  plugin: '', billboard: '', report: ''
+  plugin: '', billboard: '', report: '',
+  module: '', server: '', client: '',   // Game Logic
+};
+let logicSummary = '';
+
+// File Game Logic: lokasi di Roblox Studio + nama file download
+const LOGIC_FILES = {
+  module: { path: 'ReplicatedStorage › ArrUI › GameConfig (ModuleScript)', file: 'GameConfig.lua' },
+  server: { path: 'ServerScriptService › ArrUIServer (Script)',            file: 'ArrUIServer.server.lua' },
+  client: { path: 'StarterPlayerScripts › ArrUIClient (LocalScript)',       file: 'ArrUIClient.client.lua' },
 };
 let lastNodes = [];
 let viewMode = 'html';
@@ -281,6 +290,10 @@ async function convert(options = {}) {
     cache.plugin     = gen.plugin     || '';
     cache.billboard  = gen.billboard  || '';
     cache.report     = gen.report     || '';
+    cache.module     = gen.module     || '';
+    cache.server     = gen.server     || '';
+    cache.client     = gen.client     || '';
+    logicSummary     = gen.logicSummary || '';
 
     renderTab();
     renderRobloxPreview(lastNodes);
@@ -881,16 +894,32 @@ function renderTab() {
   const content = cache[currentTab] || '';
   if (currentTab === 'rbxmx' || currentTab === 'plugin' || currentTab === 'billboard') {
     outputBody.innerHTML = highlightLua(content);
-  } else if (currentTab === 'script' || currentTab === 'fullscript') {
+  } else if (['script', 'fullscript', 'module', 'server', 'client'].includes(currentTab)) {
     outputBody.innerHTML = renderCodeWithLines(content, highlightLua);
   } else {
     outputBody.innerHTML = escapeHtml(content);
   }
   const luaLines = ref.luaLines;
   if (luaLines) luaLines.textContent = content.split('\n').length + ' lines';
+  const isLogic = !!LOGIC_FILES[currentTab];
   document.querySelectorAll('.tab').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === currentTab);
+    btn.classList.toggle('active', btn.dataset.tab === currentTab || (isLogic && btn.dataset.group === 'logic'));
   });
+
+  const logicBar = $('logicBar');
+  if (logicBar) {
+    logicBar.classList.toggle('hidden', !isLogic);
+    logicBar.querySelectorAll('.logic-file[data-logic]').forEach(b =>
+      b.classList.toggle('active', b.dataset.logic === currentTab));
+    const path = $('logicPath');
+    if (path) path.textContent = isLogic ? '📍 ' + LOGIC_FILES[currentTab].path : '';
+    const summary = $('logicSummary');
+    if (summary) summary.textContent = logicSummary ? '🔎 Terdeteksi: ' + logicSummary : '';
+  }
+}
+
+function currentLogicFile() {
+  return LOGIC_FILES[currentTab] ? currentTab : 'server';
 }
 
 function switchTab(tab) {
@@ -932,6 +961,7 @@ function downloadFile(kind) {
   if (kind === 'rbxmx')     { content = cache.rbxmx;      filename = 'GeneratedUIPack.rbxmx'; mime = 'application/xml'; }
   if (kind === 'plugin')    { content = cache.plugin;     filename = 'ArrStudioImporter.lua'; }
   if (kind === 'billboard') { content = cache.billboard;  filename = 'BillboardNametag.lua'; }
+  if (LOGIC_FILES[kind])    { content = cache[kind];      filename = LOGIC_FILES[kind].file; }
   if (!content) return;
 
   const blob = new Blob([content], { type: mime + ';charset=utf-8' });
@@ -1385,6 +1415,7 @@ window.loadSample    = loadSample;
 window.clearInput    = clearInput;
 window.runConvert    = runConvert;
 window.switchTab     = switchTab;
+window.currentLogicFile = currentLogicFile;
 window.copyCurrent   = copyCurrent;
 window.downloadFile  = downloadFile;
 window.regenerateBillboard = regenerateBillboard;
