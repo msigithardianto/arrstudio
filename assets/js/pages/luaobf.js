@@ -236,6 +236,138 @@ if _f then return _f() end`;
       && /%\s*256/.test(text);
   }
 
+  /* ============================================================
+     BYTECODE VM (Luraph / MoonSec / IronBrew dsb.)
+     Logika = opcode angka yang dijalankan interpreter → TIDAK bisa jadi
+     source bersih otomatis. Yang bisa & aman: decode KONSTANTA STRING
+     (tanpa menjalankan kode) & sisipkan balik agar terbaca.
+     ============================================================ */
+  function looksLikeVMBytecode(text) {
+    const bigTable = /local\s+\w+\s*=\s*\{\s*"\\\d{2,3}/.test(text); // tabel string escape desimal
+    const poolFn = /function\s+\w+\s*\(\s*\w+\s*\)\s*return\s+\w+\[\s*\w+\s*\+\s*\(/.test(text); // w(w) return x[w+(...)]
+    const dispatch = (text.match(/if\s+\w+\s*<\s*-?\d{3,}/g) || []).length > 20; // while G do if G<NNN ...
+    const boot = /getfenv|newproxy/.test(text) && /setmetatable/.test(text);
+    return (bigTable && poolFn) && (dispatch || boot);
+  }
+
+  // Parser literal string Lua (menangani \ddd desimal, \xHH, \n\t\r, \", dst.)
+  function parseLuaStrings(text, startIdx) {
+    let i = text.indexOf('{', startIdx) + 1;
+    const out = [];
+    while (i < text.length) {
+      const ch = text[i];
+      if (ch === '}') break;
+      if (ch === '"' || ch === "'") {
+        const q = ch; let s = ''; i++;
+        while (i < text.length) {
+          const c = text[i];
+          if (c === '\\') {
+            const n = text[i + 1];
+            if (n >= '0' && n <= '9') { // \ddd desimal (1-3 digit)
+              let d = n; let k = i + 2;
+              while (k < i + 4 && text[k] >= '0' && text[k] <= '9') { d += text[k]; k++; }
+              s += String.fromCharCode(parseInt(d, 10) & 255); i = k; continue;
+            }
+            if (n === 'x') { s += String.fromCharCode(parseInt(text.substr(i + 2, 2), 16) & 255); i += 4; continue; }
+            const map = { n: '\n', t: '\t', r: '\r', '"': '"', "'": "'", '\\': '\\', a: '\x07', b: '\b', f: '\f', v: '\v' };
+            s += (n in map) ? map[n] : n; i += 2; continue;
+          }
+          if (c === q) { i++; break; }
+          s += c; i++;
+        }
+        out.push(s);
+      } else i++;
+    }
+    return out;
+  }
+
+  // Eval ekspresi aritmetika integer aman: hanya digit, + - ( ) spasi
+  function evalIntExpr(expr) {
+    if (!/^[-+()\d\s]+$/.test(expr)) return NaN;
+    try { return Function('"use strict";return (' + expr + ')')(); } catch (e) { return NaN; }
+  }
+
+  // → { ok, code, count, strings } : decode & sisipkan konstanta string; logika tetap VM
+  function deobfVMConstants(text) {
+    try {
+      const arrM = /local\s+(\w+)\s*=\s*\{\s*"\\\d/.exec(text);
+      if (!arrM) return { ok: false };
+      const XI = parseLuaStrings(text, arrM.index);
+      if (!XI || XI.length < 8) return { ok: false };
+
+      const rr = /ipairs\(\{((?:\s*\{[^{}]*\}\s*[;,]?)+)\}\)/.exec(text);
+      if (rr) {
+        for (const mm of rr[1].matchAll(/\{([^{}]*)\}/g)) {
+          const nums = mm[1].split(/[;,]/).map(s => evalIntExpr(s.trim()));
+          if (nums.length >= 2 && nums.every(Number.isFinite)) {
+            let a = nums[0] - 1, b = nums[1] - 1;
+            while (a < b) { const t = XI[a]; XI[a] = XI[b]; XI[b] = t; a++; b--; }
+          }
+        }
+      }
+
+      // alfabet o: {["x"]=EXPR; y=EXPR, ...} nilai berupa aritmetika
+      const alM = /local\s+(\w+)\s*=\s*\{\s*(?:\[?["']?[\w\\]+["']?\]?\s*=\s*-?\d)/.exec(text);
+      // ambil blok alfabet: cari 'local <o>={' yang isinya banyak '=angka' & ada ["\ddd"] atau huruf
+      let alpha = null;
+      for (const m of text.matchAll(/local\s+(\w+)\s*=\s*\{/g)) {
+        let i = m.index + m[0].length, depth = 1, body = '';
+        while (i < text.length && depth > 0) { const c = text[i]; if (c === '{') depth++; else if (c === '}') { depth--; if (!depth) break; } body += c; i++; }
+        const pairs = [...body.matchAll(/(\[(["'])((?:\\.|.)*?)\2\]|(\w))\s*=\s*([-+()\d\s]+?)(?=[;,}]|$)/g)];
+        if (pairs.length >= 40) { // alfabet base64 ~64 entri
+          alpha = {};
+          for (const p of pairs) {
+            let key = p[4] !== undefined ? p[4] : p[3];
+            if (key.startsWith('\\')) key = String.fromCharCode(parseInt(key.slice(1), 10) & 255);
+            const val = evalIntExpr(p[5].trim());
+            if (Number.isFinite(val)) alpha[key] = val;
+          }
+          break;
+        }
+      }
+      if (!alpha) return { ok: false };
+
+      const b64 = (s) => {
+        const out = []; let I = 0, j = 0;
+        for (let p = 0; p < s.length; p++) {
+          const c = s[p], T = alpha[c];
+          if (T !== undefined) { I += T * Math.pow(64, 3 - j); j++; if (j === 4) { j = 0; out.push((Math.floor(I / 65536)) % 256, (Math.floor((I % 65536) / 256)) % 256, I % 256); I = 0; } }
+          else if (c === '=') { out.push(Math.floor(I / 65536) % 256); if (p + 1 >= s.length || s[p + 1] !== '=') out.push(Math.floor((I % 65536) / 256) % 256); break; }
+        }
+        return out;
+      };
+      const dec = XI.map(s => b64(s));
+
+      // OFFSET dari: function w(w) return x[w+(EXPR)] end
+      const offM = /function\s+\w+\s*\(\s*\w+\s*\)\s*return\s+\w+\[\s*\w+\s*\+\s*\(([-+()\d\s]+)\)\s*\]/.exec(text);
+      if (!offM) return { ok: false };
+      const OFFSET = evalIntExpr(offM[1]);
+      if (!Number.isFinite(OFFSET)) return { ok: false };
+
+      const poolName = offM[0].match(/function\s+(\w+)/)[1];
+      const printable = (b) => b.length > 0 && b.every(c => c >= 9 && c < 127);
+      const strAt = (idx) => { const b = dec[idx + OFFSET - 1]; return b ? b.map(c => String.fromCharCode(c)).join('') : null; };
+
+      // Sisipkan w(<arith>) → "string" di seluruh VM (w = decoder di region VM)
+      const strings = [];
+      let count = 0;
+      const re = new RegExp('\\b' + poolName + '\\s*\\(\\s*([-+()\\d\\s]+?)\\s*\\)', 'g');
+      const code = text.replace(re, (m, expr) => {
+        const n = evalIntExpr(expr);
+        if (!Number.isFinite(n)) return m;
+        const b = dec[n + OFFSET - 1];
+        if (!b) return m;
+        if (printable(b)) { const s = b.map(c => String.fromCharCode(c)).join(''); strings.push(s); count++; return luaQuote(s); }
+        return m; // biner (kemungkinan angka/kunci VM) → biarkan
+      });
+      if (count === 0) return { ok: false };
+      const uniq = [...new Set(strings)];
+      return { ok: true, code, count, strings: uniq };
+    } catch (e) {
+      return { ok: false, error: e.message };
+    }
+  }
+
   // Deobfuscate famili-A → { ok, code, count } atau { ok:false }
   function deobfFamilyA(text) {
     try {
@@ -514,6 +646,22 @@ if _f then return _f() end`;
           return showToast(`Berhasil deobfuscate (${fa.count} string)`, 'success', 4000);
         }
       }
+      // Obfuscator bytecode-VM (Luraph/MoonSec/IronBrew dsb.): decode konstanta string
+      if (looksLikeVMBytecode(src)) {
+        const vm = deobfVMConstants(src);
+        if (vm.ok) {
+          const header = '--[[ ARRR Studio — Bytecode-VM obfuscator terdeteksi.\n'
+            + '  ' + vm.count + ' konstanta string berhasil didecode & disisipkan (aman, tanpa menjalankan kode).\n'
+            + '  CATATAN: logika program ini dikompilasi jadi BYTECODE (angka) yang dijalankan\n'
+            + '  interpreter/VM di dalamnya — bukan lagi kode Lua biasa. Mengembalikannya ke\n'
+            + '  source asli yang rapi butuh devirtualisasi khusus per-VM dan TIDAK bisa otomatis.\n'
+            + '  Yang di bawah = kode VM apa adanya, dengan semua string sudah terbaca. ]]\n\n';
+          setOutput(header + vm.code);
+          $('loNote').textContent = `Bytecode-VM: ${vm.count} konstanta string didecode & disisipkan. `
+            + `Logika tetap berupa bytecode VM (tidak bisa dijadikan source asli otomatis).`;
+          return showToast(`Konstanta didecode (${vm.count} string) — logika tetap VM`, 'warning', 6000);
+        }
+      }
       // Sisanya → best-effort / penjelasan jujur
       const be = bestEffort(src);
       setOutput(be.cannot ? '' : be.code);
@@ -627,7 +775,7 @@ if _f then return _f() end`;
 
   window.initLuaObf = initLuaObf;
   // Ekspos untuk pengetesan
-  window.__ArrrLua = { obfuscate, deobfuscate, deobfFamilyA, looksLikeFamilyA };
+  window.__ArrrLua = { obfuscate, deobfuscate, deobfFamilyA, looksLikeFamilyA, deobfVMConstants, looksLikeVMBytecode };
 
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initLuaObf);
