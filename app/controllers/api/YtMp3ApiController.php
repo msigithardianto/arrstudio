@@ -7,6 +7,8 @@
 //            speed = x1.00–x2.00, pitch = semitone -6..+6 (Audio Enhancement)
 // GET        ?action=download&token=...               → file .mp3
 // GET        ?action=zip&tokens=a,b,c                 → file .zip (semua hasil)
+// POST JSON  {action:"tools"}                         → status yt-dlp & ffmpeg (MediaTools::status)
+// POST JSON  {action:"install", tool:"ytdlp"|"ffmpeg"} → download otomatis ke storage/bin
 //
 // Tiap video = 1 request "convert" (JS yang mengatur antrian & paralelnya).
 
@@ -28,6 +30,22 @@ class YtMp3ApiController extends ApiController
 
         try {
             switch ($action) {
+                case 'tools':
+                    $this->json(MediaTools::status());
+
+                case 'install':
+                    if (!config('app.ytmp3.allow_install', true)) {
+                        $this->error('Install otomatis dimatikan (app.ytmp3.allow_install)');
+                    }
+                    set_time_limit(0); // ffmpeg ±190MB
+                    ignore_user_abort(true);
+                    match ((string)($input['tool'] ?? '')) {
+                        'ytdlp'  => MediaTools::installYtdlp(),
+                        'ffmpeg' => MediaTools::installFfmpeg(),
+                        default  => $this->error('Tool tidak dikenal'),
+                    };
+                    $this->json(MediaTools::status());
+
                 case 'playlist':
                     $listId = YoutubeMp3Service::playlistId((string)($input['url'] ?? ''));
                     if ($listId === null) {

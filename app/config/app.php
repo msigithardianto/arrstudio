@@ -27,6 +27,9 @@ return [
         'max_playlist' => 50,    // video maks yang diambil dari 1 playlist
         'max_batch'    => 50,    // link maks sekali proses (dicek di JS)
         'timeout'      => 240,   // detik maks per video
+        // Tombol "Install otomatis" (download yt-dlp / ffmpeg ke storage/bin).
+        // Matikan kalau server publik & tools sudah terpasang.
+        'allow_install' => true,
     ],
 
     // Lokasi penyimpanan user

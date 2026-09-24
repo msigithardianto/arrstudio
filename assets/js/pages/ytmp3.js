@@ -16,6 +16,8 @@
   let items   = [];     // { videoId, label, status, token?, filename?, size?, error? }
   let running = false;
   let stopped = false;
+  let tools   = null;   // status yt-dlp & ffmpeg dari server (action "tools")
+  let installing = false;
 
   /* ============================================================
      PARSE INPUT
@@ -72,6 +74,85 @@
     const { videos, playlists, invalid } = parseInput($('ytLinks').value);
     $('ytCount').textContent = `${videos.length} video · ${playlists.length} playlist terdeteksi`
       + (invalid.length ? ` · ${invalid.length} link tidak dikenali` : '');
+  }
+
+  /* ============================================================
+     TOOLS (yt-dlp + ffmpeg) — cek status & install otomatis
+     ============================================================ */
+  const TOOL_LABEL = { ytdlp: 'yt-dlp', ffmpeg: 'ffmpeg' };
+  const toolsReady = () => !!(tools && tools.ytdlp.ok && tools.ffmpeg.ok);
+
+  function toolsMsg(text, isErr) {
+    const el = $('ytToolsMsg');
+    if (!el) return;
+    el.textContent = text || '';
+    el.classList.toggle('err', !!isErr);
+  }
+
+  function renderTools() {
+    const box = $('ytTools');
+    if (!box) return;
+    const setChip = (id, t) => {
+      const el = $(id);
+      el.classList.toggle('ok', !!(t && t.ok));
+      el.classList.toggle('miss', !!(t && !t.ok));
+      el.querySelector('b').textContent = !t ? 'cek…' : (t.ok ? (t.version || 'OK') : 'belum ada');
+    };
+    setChip('ytToolYtdlp', tools && tools.ytdlp);
+    setChip('ytToolFfmpeg', tools && tools.ffmpeg);
+
+    box.dataset.state = !tools ? 'loading' : (toolsReady() ? 'ok' : 'missing');
+    const missing = tools ? ['ytdlp', 'ffmpeg'].filter(k => !tools[k].ok) : [];
+    const canAuto = tools && missing.some(k => tools.autoInstall[k]);
+
+    $('ytToolsInstall').hidden   = !canAuto;
+    $('ytToolsInstall').disabled = installing;
+    $('ytToolsUpdate').hidden    = !(tools && tools.ytdlp.ok && tools.autoInstall.ytdlp);
+    $('ytToolsUpdate').disabled  = installing || running;
+    $('ytToolsRefresh').disabled = installing;
+    $('ytToolsHelp').hidden      = !tools || toolsReady();
+  }
+
+  async function checkTools() {
+    if (!window.__isLoggedIn || !$('ytTools')) return;
+    tools = null;
+    renderTools();
+    try {
+      tools = await callApi({ action: 'tools' });
+      if (!installing) {
+        toolsMsg(toolsReady() ? '' : 'yt-dlp dan ffmpeg dibutuhkan untuk convert. Klik "Install otomatis" (sekali saja).');
+      }
+    } catch (e) {
+      toolsMsg('Gagal cek tools: ' + e.message, true);
+    }
+    renderTools();
+  }
+
+  async function installTools(list) {
+    if (installing) return;
+    installing = true;
+    renderTools();
+    try {
+      for (const tool of list) {
+        toolsMsg(`Menginstall ${TOOL_LABEL[tool]}… ${tool === 'ffmpeg'
+          ? '(download ±190MB, bisa beberapa menit — jangan tutup halaman)' : '(±20MB)'}`);
+        tools = await callApi({ action: 'install', tool });
+        renderTools();
+      }
+      toolsMsg(toolsReady() ? 'Tools siap dipakai.' : 'Sebagian tools belum terpasang — lihat cara manual di bawah.', !toolsReady());
+      if (toolsReady()) showToast('yt-dlp & ffmpeg siap');
+    } catch (e) {
+      toolsMsg('Install gagal: ' + e.message, true);
+      $('ytToolsHelp').hidden = false;
+    } finally {
+      installing = false;
+      renderTools();
+    }
+  }
+
+  function installMissing() {
+    if (!tools) return;
+    installTools(['ytdlp', 'ffmpeg'].filter(k => !tools[k].ok && tools.autoInstall[k]));
   }
 
   /* ============================================================
@@ -362,6 +443,10 @@ return AudioCompensation
 
     const { videos, playlists } = parseInput($('ytLinks').value);
     if (!videos.length && !playlists.length) return showToast('Tempel minimal 1 link YouTube', 'error');
+    if (tools && !toolsReady()) {
+      $('ytTools').scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return showToast('Install yt-dlp & ffmpeg dulu (panel Tools di atas)', 'error', 3500);
+    }
 
     const max  = window.__ytmp3MaxBatch || 50;
     const seen = new Set();
@@ -448,6 +533,9 @@ return AudioCompensation
       renderFx();
     });
     $('ytScriptCopy').addEventListener('click', copyScript);
+    $('ytToolsInstall').addEventListener('click', installMissing);
+    $('ytToolsUpdate').addEventListener('click', () => installTools(['ytdlp']));
+    $('ytToolsRefresh').addEventListener('click', checkTools);
     $('ytScriptDownload').addEventListener('click', downloadScript);
 
     // Balik ke halaman ini (SPA) saat proses masih jalan → tampilkan state terakhir
@@ -457,6 +545,11 @@ return AudioCompensation
     updateCount();
     renderFx();
     renderAll();
+    if (window.__isLoggedIn) {
+      if (tools) renderTools(); else checkTools();
+    } else {
+      $('ytTools').hidden = true;
+    }
   }
 
   window.initYtMp3 = initYtMp3;
