@@ -13,6 +13,7 @@
       <?php View::partial('pages/docs/sections/quickstart'); ?>
       <?php View::partial('pages/docs/sections/html'); ?>
       <?php View::partial('pages/docs/sections/actions'); ?>
+      <?php View::partial('pages/docs/sections/logic'); ?>
       <?php View::partial('pages/docs/sections/output'); ?>
       <?php View::partial('pages/docs/sections/plugin'); ?>
       <?php View::partial('pages/docs/sections/api'); ?>

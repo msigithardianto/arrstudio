@@ -31,16 +31,15 @@
             </div>
             <div class="pg-code-body" id="tpl1">Buatkan HTML untuk HUD in-game Roblox yang akan di-convert pakai ARRR Studio Converter.
 
-ATURAN CONVERTER (WAJIB DIPATUHI):
-- SEMUA elemen pakai position:absolute + left/top/width/height dalam px
-- Canvas ukuran 800×600 px, semua elemen harus masuk dalam canvas
-- JANGAN pakai display:flex atau display:grid
-- JANGAN pakai %, em, rem, vh, vw, calc()
-- JANGAN pakai box-shadow, filter, transform, transition, animation
-- Cuma pakai tag: div, span, p, button, img, h1-h6, label
-- Font: Arial, size dalam px
-- Warna hex atau rgba
-- Border-radius dalam px
+ATURAN CONVERTER ARRR STUDIO v5:
+- Boleh pakai &lt;style&gt; + class, flex, grid, margin, padding (dibaca dari hasil render browser)
+- Satu elemen root pembungkus, ukuran muat di 800×600 px
+- Warna solid / linear-gradient; border & border-radius boleh; transform: rotate() boleh
+- JANGAN box-shadow, text-shadow, filter, backdrop-filter, radial-gradient, gambar URL (pakai emoji)
+- Tombol pakai &lt;button&gt; dengan teks jelas (Buy, Sell, Equip, Claim, Upgrade, Redeem, Spin, Accept, Decline, Save)
+- Harga ditulis sebagai teks + ikon mata uang: "💎 2,500", "🪙 900", "$0.99"; saldo pemain di header "💎 12,450"
+- Card item: satu container berisi ikon emoji, nama, rarity (Common/Rare/Epic/Legendary), harga
+- Panel tersembunyi: display:none + id "xxx-panel", tombol id "xxx-toggle" / "xxx-close"
 
 DESAIN HUD:
 - Posisi: pojok kiri bawah (left:20, bottom area)
@@ -54,7 +53,7 @@ TOGGLE (kalau perlu):
 
 OUTPUT:
 - Full HTML siap paste ke ARRR Studio input
-- Pakai inline style
+- Boleh pakai &lt;style&gt; + class (lebih rapi)
 - Jangan jelasin panjang, langsung kode</div>
           </div>
         </div>
@@ -81,14 +80,15 @@ OUTPUT:
             </div>
             <div class="pg-code-body" id="tpl2">Buatkan HTML untuk Shop Panel Roblox yang akan di-convert pakai ARRR Studio Converter.
 
-ATURAN CONVERTER:
-- position:absolute + left/top/width/height px
-- Canvas 800×600
-- NO flex, NO grid
-- NO %, em, rem, vh, vw
-- NO box-shadow, filter, transform
-- Tag: div, span, p, button, img, h1-h6, label
-- Font Arial px
+ATURAN CONVERTER ARRR STUDIO v5:
+- Boleh pakai &lt;style&gt; + class, flex, grid, margin, padding (dibaca dari hasil render browser)
+- Satu elemen root pembungkus, ukuran muat di 800×600 px
+- Warna solid / linear-gradient; border & border-radius boleh; transform: rotate() boleh
+- JANGAN box-shadow, text-shadow, filter, backdrop-filter, radial-gradient, gambar URL (pakai emoji)
+- Tombol pakai &lt;button&gt; dengan teks jelas (Buy, Sell, Equip, Claim, Upgrade, Redeem, Spin, Accept, Decline, Save)
+- Harga ditulis sebagai teks + ikon mata uang: "💎 2,500", "🪙 900", "$0.99"; saldo pemain di header "💎 12,450"
+- Card item: satu container berisi ikon emoji, nama, rarity (Common/Rare/Epic/Legendary), harga
+- Panel tersembunyi: display:none + id "xxx-panel", tombol id "xxx-toggle" / "xxx-close"
 
 DESAIN SHOP:
 - Panel utama: 600x500 px di tengah (left:100, top:50)
@@ -132,12 +132,15 @@ OUTPUT:
             </div>
             <div class="pg-code-body" id="tpl3">Buatkan HTML untuk Inventory Grid Roblox yang akan di-convert pakai ARRR Studio Converter.
 
-ATURAN CONVERTER:
-- position:absolute + left/top/width/height px
-- Canvas 800×600
-- NO flex, NO grid, NO box-shadow, NO transform
-- Cuma div/span/p/button/img
-- Font Arial px
+ATURAN CONVERTER ARRR STUDIO v5:
+- Boleh pakai &lt;style&gt; + class, flex, grid, margin, padding (dibaca dari hasil render browser)
+- Satu elemen root pembungkus, ukuran muat di 800×600 px
+- Warna solid / linear-gradient; border & border-radius boleh; transform: rotate() boleh
+- JANGAN box-shadow, text-shadow, filter, backdrop-filter, radial-gradient, gambar URL (pakai emoji)
+- Tombol pakai &lt;button&gt; dengan teks jelas (Buy, Sell, Equip, Claim, Upgrade, Redeem, Spin, Accept, Decline, Save)
+- Harga ditulis sebagai teks + ikon mata uang: "💎 2,500", "🪙 900", "$0.99"; saldo pemain di header "💎 12,450"
+- Card item: satu container berisi ikon emoji, nama, rarity (Common/Rare/Epic/Legendary), harga
+- Panel tersembunyi: display:none + id "xxx-panel", tombol id "xxx-toggle" / "xxx-close"
 
 DESAIN INVENTORY:
 - Panel utama: 720x540 px di (left:40, top:30)
@@ -191,12 +194,15 @@ OUTPUT:
             </div>
             <div class="pg-code-body" id="tpl4">Buatkan HTML untuk Dialogue Box RPG Roblox yang akan di-convert pakai ARRR Studio Converter.
 
-ATURAN CONVERTER:
-- position:absolute + left/top/width/height px
-- Canvas 800×600
-- NO flex, NO grid, NO box-shadow
-- Tag: div/span/p/button/img
-- Font Arial px
+ATURAN CONVERTER ARRR STUDIO v5:
+- Boleh pakai &lt;style&gt; + class, flex, grid, margin, padding (dibaca dari hasil render browser)
+- Satu elemen root pembungkus, ukuran muat di 800×600 px
+- Warna solid / linear-gradient; border & border-radius boleh; transform: rotate() boleh
+- JANGAN box-shadow, text-shadow, filter, backdrop-filter, radial-gradient, gambar URL (pakai emoji)
+- Tombol pakai &lt;button&gt; dengan teks jelas (Buy, Sell, Equip, Claim, Upgrade, Redeem, Spin, Accept, Decline, Save)
+- Harga ditulis sebagai teks + ikon mata uang: "💎 2,500", "🪙 900", "$0.99"; saldo pemain di header "💎 12,450"
+- Card item: satu container berisi ikon emoji, nama, rarity (Common/Rare/Epic/Legendary), harga
+- Panel tersembunyi: display:none + id "xxx-panel", tombol id "xxx-toggle" / "xxx-close"
 
 DESAIN DIALOGUE:
 - Panel utama di bawah canvas: 760x220 px, left:20, top:360

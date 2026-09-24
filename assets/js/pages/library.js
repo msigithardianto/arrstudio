@@ -66,6 +66,9 @@
       tags: ['craft', 'recipe', 'materials'], logic: 'Craft' },
   ];
 
+  // Teks data (nama/deskripsi) selalu di-escape — "<table>" di deskripsi dulu merusak grid
+  const esc = (t) => String(t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   let currentFilter = 'all';
   let currentSearch = '';
 
@@ -112,15 +115,15 @@
         </div>
         <div class="lib-card-body">
           <div class="lib-card-header">
-            <div class="lib-card-name">${s.name}</div>
+            <div class="lib-card-name">${esc(s.name)}</div>
             <div class="lib-card-badges">
               ${s.badges.map(b => `<span class="lib-badge ${b}">${b}</span>`).join('')}
             </div>
           </div>
-          <div class="lib-card-desc">${s.desc}</div>
-          ${s.logic ? `<div class="lib-card-logic" title="Otomatis dibuatkan di tab Game Logic">🧠 ${s.logic}</div>` : ''}
+          <div class="lib-card-desc">${esc(s.desc)}</div>
+          ${s.logic ? `<div class="lib-card-logic" title="Otomatis dibuatkan di tab Game Logic">🧠 ${esc(s.logic)}</div>` : ''}
           <div class="lib-card-meta">
-            ${s.tags.map(t => `<span class="lib-chip">#${t}</span>`).join('')}
+            ${s.tags.map(t => `<span class="lib-chip">#${esc(t)}</span>`).join('')}
           </div>
         </div>
       </div>

@@ -15,24 +15,24 @@
       <div class="pg-tip">
         <span class="pg-tip-icon">1️⃣</span>
         <div class="pg-tip-body">
-          <strong>Sebutkan "position absolute" di prompt</strong><br>
-          Biar AI nggak pakai flex/grid yang bikin convert gagal.
+          <strong>Tulis teks tombol yang jelas</strong><br>
+          "Buy", "Claim Reward", "Equip", "Redeem" → otomatis jadi remote + handler server di tab Game Logic.
         </div>
       </div>
 
       <div class="pg-tip">
         <span class="pg-tip-icon">2️⃣</span>
         <div class="pg-tip-body">
-          <strong>Sebutkan canvas 800×600</strong><br>
-          Biar AI tau batas area. Elemen nggak boleh keluar canvas.
+          <strong>Desain muat di 800×600</strong><br>
+          Itu area preview. Di game, UI otomatis di-center dan di-scale sesuai layar.
         </div>
       </div>
 
       <div class="pg-tip">
         <span class="pg-tip-icon">3️⃣</span>
         <div class="pg-tip-body">
-          <strong>Kasih ukuran px eksplisit</strong><br>
-          "width 200px, height 20px" — jangan "width: 50%".
+          <strong>Harga &amp; saldo sebagai teks</strong><br>
+          "💎 2,500" di card = harga item; "💎 12,450" di header = saldo awal pemain (leaderstats).
         </div>
       </div>
 
@@ -87,16 +87,16 @@
       <div class="pg-tip bad">
         <span class="pg-tip-icon">❌</span>
         <div class="pg-tip-body">
-          <strong>JANGAN pakai flex/grid</strong><br>
-          Converter nggak bisa baca layout modern. Hasilnya elemen numpuk di (0,0).
+          <strong>JANGAN andalkan box-shadow / blur</strong><br>
+          Roblox tidak punya shadow &amp; filter. Pakai border atau warna gelap sebagai gantinya.
         </div>
       </div>
 
       <div class="pg-tip bad">
         <span class="pg-tip-icon">❌</span>
         <div class="pg-tip-body">
-          <strong>JANGAN pakai % atau vh</strong><br>
-          Roblox pakai UDim2 offset/scale. Converter cuma handle px.
+          <strong>JANGAN pakai gambar URL</strong><br>
+          Roblox butuh rbxassetid. Pakai emoji atau bentuk CSS; ganti Image di Studio setelah upload aset.
         </div>
       </div>
 

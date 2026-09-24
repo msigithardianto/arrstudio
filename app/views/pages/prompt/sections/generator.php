@@ -71,7 +71,7 @@ Border radius 8px di semua panel"></textarea>
 
       <div class="pg-field full">
         <label class="pg-label">Catatan Tambahan (opsional)</label>
-        <textarea class="pg-textarea" id="genNotes" placeholder="contoh: pakai emoji untuk icon, jangan pakai flex, semua position absolute"></textarea>
+        <textarea class="pg-textarea" id="genNotes" placeholder="contoh: pakai emoji untuk icon, tombol Buy di tiap card, saldo gem di header"></textarea>
       </div>
 
     </div>

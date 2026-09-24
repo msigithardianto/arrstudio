@@ -8,53 +8,40 @@
       Cheat Sheet HTML Converter
     </div>
     <div class="pg-section-desc">
-      Klik tag untuk copy ke clipboard. Merah = <strong>JANGAN dipakai</strong>.
+      Klik tag untuk copy ke clipboard. Merah = <strong>tidak ada di Roblox</strong> (hindari).
     </div>
 
     <div class="pg-cheat-grid">
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">✅</span> Tag Didukung
+          <span class="pg-cheat-icon">✅</span> Tag Didukung (semua tag)
         </div>
         <div class="pg-cheat-list">
-          <span class="pg-cheat-tag">div</span>
-          <span class="pg-cheat-tag">span</span>
-          <span class="pg-cheat-tag">p</span>
+          <span class="pg-cheat-tag">div / section / article</span>
+          <span class="pg-cheat-tag">span / p / h1–h6</span>
           <span class="pg-cheat-tag">button</span>
-          <span class="pg-cheat-tag">input</span>
-          <span class="pg-cheat-tag">textarea</span>
+          <span class="pg-cheat-tag">input / textarea</span>
           <span class="pg-cheat-tag">img</span>
-          <span class="pg-cheat-tag">h1</span>
-          <span class="pg-cheat-tag">h2</span>
-          <span class="pg-cheat-tag">h3</span>
-          <span class="pg-cheat-tag">label</span>
-          <span class="pg-cheat-tag">ul</span>
-          <span class="pg-cheat-tag">ol</span>
-          <span class="pg-cheat-tag">li</span>
-          <span class="pg-cheat-tag">section</span>
-          <span class="pg-cheat-tag">header</span>
-          <span class="pg-cheat-tag">footer</span>
-          <span class="pg-cheat-tag">main</span>
-          <span class="pg-cheat-tag">nav</span>
-          <span class="pg-cheat-tag">aside</span>
-          <span class="pg-cheat-tag">article</span>
-          <span class="pg-cheat-tag">a</span>
+          <span class="pg-cheat-tag">ul / ol / li</span>
+          <span class="pg-cheat-tag">table / tr / td</span>
+          <span class="pg-cheat-tag">form / label</span>
+          <span class="pg-cheat-tag">header / nav / footer</span>
+          <span class="pg-cheat-tag">b / strong / i / em</span>
+          <span class="pg-cheat-tag">br</span>
+          <span class="pg-cheat-tag">data-name="..."</span>
         </div>
       </div>
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head" style="color:#ef4444;">
-          <span class="pg-cheat-icon" style="background:rgba(239,68,68,0.15);">🚫</span> Tag Unsupported
+          <span class="pg-cheat-icon" style="background:rgba(239,68,68,0.15);">🚫</span> Tag / Fitur Dilewati
         </div>
         <div class="pg-cheat-list">
+          <span class="pg-cheat-tag bad">svg (jadi Frame kosong)</span>
           <span class="pg-cheat-tag bad">canvas</span>
-          <span class="pg-cheat-tag bad">svg</span>
           <span class="pg-cheat-tag bad">video</span>
           <span class="pg-cheat-tag bad">iframe</span>
-          <span class="pg-cheat-tag bad">form</span>
-          <span class="pg-cheat-tag bad">table</span>
-          <span class="pg-cheat-tag bad">select</span>
-          <span class="pg-cheat-tag bad">option</span>
+          <span class="pg-cheat-tag bad">::before / ::after</span>
         </div>
       </div>
 
@@ -63,21 +50,21 @@
           <span class="pg-cheat-icon">✅</span> CSS Didukung
         </div>
         <div class="pg-cheat-list">
-          <span class="pg-cheat-tag">position: absolute</span>
-          <span class="pg-cheat-tag">position: relative</span>
-          <span class="pg-cheat-tag">left/top</span>
-          <span class="pg-cheat-tag">width/height (px)</span>
-          <span class="pg-cheat-tag">background: #hex</span>
-          <span class="pg-cheat-tag">background: linear-gradient</span>
-          <span class="pg-cheat-tag">color: #hex</span>
-          <span class="pg-cheat-tag">font-size (px)</span>
-          <span class="pg-cheat-tag">font-weight</span>
-          <span class="pg-cheat-tag">border</span>
-          <span class="pg-cheat-tag">border-radius (px)</span>
-          <span class="pg-cheat-tag">padding (px)</span>
+          <span class="pg-cheat-tag">&lt;style&gt; + class</span>
+          <span class="pg-cheat-tag">display: flex</span>
+          <span class="pg-cheat-tag">display: grid</span>
+          <span class="pg-cheat-tag">margin / padding</span>
+          <span class="pg-cheat-tag">% / em / rem</span>
+          <span class="pg-cheat-tag">linear-gradient</span>
+          <span class="pg-cheat-tag">border (per sisi)</span>
+          <span class="pg-cheat-tag">border-radius (sebagian)</span>
+          <span class="pg-cheat-tag">transform: rotate()</span>
           <span class="pg-cheat-tag">opacity</span>
-          <span class="pg-cheat-tag">visibility</span>
-          <span class="pg-cheat-tag">text-align</span>
+          <span class="pg-cheat-tag">overflow: hidden</span>
+          <span class="pg-cheat-tag">overflow: auto → Scrolling</span>
+          <span class="pg-cheat-tag">font-family</span>
+          <span class="pg-cheat-tag">text-transform</span>
+          <span class="pg-cheat-tag">display: none (class)</span>
         </div>
       </div>
 
@@ -86,19 +73,15 @@
           <span class="pg-cheat-icon" style="background:rgba(239,68,68,0.15);">🚫</span> CSS Unsupported
         </div>
         <div class="pg-cheat-list">
-          <span class="pg-cheat-tag bad">display: flex</span>
-          <span class="pg-cheat-tag bad">display: grid</span>
-          <span class="pg-cheat-tag bad">position: fixed</span>
-          <span class="pg-cheat-tag bad">position: sticky</span>
           <span class="pg-cheat-tag bad">box-shadow</span>
+          <span class="pg-cheat-tag bad">text-shadow</span>
           <span class="pg-cheat-tag bad">filter</span>
-          <span class="pg-cheat-tag bad">transform</span>
-          <span class="pg-cheat-tag bad">transition</span>
-          <span class="pg-cheat-tag bad">animation</span>
-          <span class="pg-cheat-tag bad">%</span>
-          <span class="pg-cheat-tag bad">em / rem</span>
-          <span class="pg-cheat-tag bad">vh / vw</span>
-          <span class="pg-cheat-tag bad">calc()</span>
+          <span class="pg-cheat-tag bad">backdrop-filter</span>
+          <span class="pg-cheat-tag bad">clip-path</span>
+          <span class="pg-cheat-tag bad">radial-gradient</span>
+          <span class="pg-cheat-tag bad">transform: skew()</span>
+          <span class="pg-cheat-tag bad">mix-blend-mode</span>
+          <span class="pg-cheat-tag bad">background-image: url()</span>
         </div>
       </div>
 
@@ -107,11 +90,18 @@
           <span class="pg-cheat-icon">🎯</span> Interaktif
         </div>
         <div class="pg-cheat-list">
+          <span class="pg-cheat-tag">id="shop-toggle"</span>
+          <span class="pg-cheat-tag">id="shop-close"</span>
+          <span class="pg-cheat-tag">id="shop-panel"</span>
+          <span class="pg-cheat-tag">display:none</span>
           <span class="pg-cheat-tag">data-action="toggle"</span>
-          <span class="pg-cheat-tag">data-action="close"</span>
-          <span class="pg-cheat-tag">data-target="panelId"</span>
-          <span class="pg-cheat-tag">id="panelId"</span>
-          <span class="pg-cheat-tag">style="display:none;"</span>
+          <span class="pg-cheat-tag">data-target="shop-panel"</span>
+          <span class="pg-cheat-tag">Buy / Sell / Equip</span>
+          <span class="pg-cheat-tag">Claim / Redeem / Spin</span>
+          <span class="pg-cheat-tag">Upgrade / Craft</span>
+          <span class="pg-cheat-tag">Accept / Decline</span>
+          <span class="pg-cheat-tag">Save</span>
+          <span class="pg-cheat-tag">💎 2,500 (harga)</span>
         </div>
       </div>
 
@@ -152,12 +142,12 @@
 
       <div class="pg-cheat-card">
         <div class="pg-cheat-head">
-          <span class="pg-cheat-icon">📐</span> Canvas Size
+          <span class="pg-cheat-icon">📐</span> Ukuran Desain
         </div>
         <div style="font-size:12.5px;color:var(--text-dim);line-height:1.7;">
-          <code>800 × 600 px</code><br>
-          Semua elemen harus masuk dalam canvas ini.<br>
-          Untuk HUD, pakai corner: <code>left:20, top:20</code>, <code>right</code> = <code>800 - lebar - 20</code>
+          Area desain <code>800 × 600 px</code> (preview).<br>
+          UI dengan 1 root otomatis di-center &amp; di-scale di layar pemain,<br>
+          jadi cukup desain ukuran menunya saja.
         </div>
       </div>
 
