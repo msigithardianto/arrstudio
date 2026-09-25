@@ -17,6 +17,10 @@
 //            status review Roblox (maks 25 aset per request), ikut disimpan ke riwayat
 // POST JSON  {action:"history"}                     → {items:[...]} riwayat upload (UploadHistory)
 // POST JSON  {action:"history_delete", ids:[...]|all:true} → hapus dari riwayat (aset di Roblox tetap ada)
+// POST JSON  {action:"anim", apiKey, animId, name?}  → download animation (KeyframeSequence) jadi .rbxm
+//            → {token, animId, name, filename, size, kind}
+// GET        ?action=anim_download&token=...          → kirim file .rbxm
+// GET        ?action=anim_zip&tokens=a,b,c            → kirim .zip berisi banyak .rbxm
 //
 // Balasan sukses: {assetId} atau {operationId} (belum selesai → JS panggil "status")
 // Tiap upload yang berhasil dicatat otomatis di riwayat user.
@@ -35,7 +39,7 @@ class SpoofApiController extends ApiController
 
         $isMultipart = str_starts_with($_SERVER['CONTENT_TYPE'] ?? '', 'multipart/form-data');
         $input       = $isMultipart ? $_POST : (Request::json() ?? []);
-        $action      = (string)($input['action'] ?? '');
+        $action      = (string)($input['action'] ?? $_GET['action'] ?? '');
         $history     = new UploadHistory($owner);
 
         // Riwayat tidak butuh API key
@@ -49,6 +53,18 @@ class SpoofApiController extends ApiController
                     $this->error('Pilih riwayat yang mau dihapus');
                 }
                 $this->json(['deleted' => $history->delete($ids)]);
+            }
+            if ($action === 'anim_download') {
+                $anim = new AnimationSpoofService();
+                $f = $anim->find((string)($_GET['token'] ?? ''), $owner);
+                $this->sendFile($f['path'], $f['filename'], 'model/x-rbxm');
+            }
+            if ($action === 'anim_zip') {
+                $anim   = new AnimationSpoofService();
+                $tokens = array_slice(array_filter(explode(',', (string)($_GET['tokens'] ?? ''))), 0, 200);
+                set_time_limit(120);
+                $zip = $anim->zip($tokens, $owner);
+                $this->sendFile($zip, 'animations-' . date('Ymd-His') . '.zip', 'application/zip', true);
             }
         } catch (Throwable $e) {
             $this->error($e->getMessage());
@@ -64,6 +80,15 @@ class SpoofApiController extends ApiController
 
         try {
             switch ($action) {
+                case 'anim':
+                    $animId = trim((string)($input['animId'] ?? ''));
+                    if (!preg_match('/^\d{1,20}$/', $animId)) {
+                        $this->error('Animation ID tidak valid: ' . $animId);
+                    }
+                    set_time_limit(60);
+                    $name   = trim((string)($input['name'] ?? '')) ?: ('animation_' . $animId);
+                    $this->json((new AnimationSpoofService())->download($service, $animId, $name, $owner));
+
                 case 'status':
                     $opId = (string)($input['operationId'] ?? '');
                     if (!preg_match('/^[A-Za-z0-9_-]{1,128}$/', $opId)) {
@@ -194,6 +219,25 @@ class SpoofApiController extends ApiController
         } catch (Throwable $e) {
             error_log('UploadHistory: ' . $e->getMessage());
         }
+    }
+
+    /** Kirim file sebagai attachment lalu exit */
+    private function sendFile(string $path, string $filename, string $type, bool $deleteAfter = false): void
+    {
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        $ascii = preg_replace('/[^A-Za-z0-9 ._()-]+/', '_', $filename);
+        header('Content-Type: ' . $type);
+        header('Content-Length: ' . filesize($path));
+        header('Content-Disposition: attachment; filename="' . $ascii . '"; filename*=UTF-8\'\'' . rawurlencode($filename));
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        readfile($path);
+        if ($deleteAfter) {
+            @unlink($path);
+        }
+        exit;
     }
 
     /** @return array{0:string,1:string} */

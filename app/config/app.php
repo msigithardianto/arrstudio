@@ -32,6 +32,9 @@ return [
         'allow_install' => true,
     ],
 
+    // Animation spoof: TTL file .rbxm sementara (detik)
+    'anim' => ['ttl' => 3600],
+
     // Lokasi penyimpanan user
     'users_file' => STORAGE_PATH . '/users.json',
 ];

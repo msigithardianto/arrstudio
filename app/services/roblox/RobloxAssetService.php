@@ -76,6 +76,31 @@ class RobloxAssetService
         return ['bytes' => $bytes, 'sourceId' => $assetId];
     }
 
+    /**
+     * Ambil isi aset MENTAH apa adanya (tanpa deteksi gambar/audio, tanpa ikuti inner-id).
+     * Dipakai untuk Animation (KeyframeSequence) → langsung jadi file .rbxm yang bisa
+     * di-drag ke Studio. @return array{bytes:string, kind:string}
+     */
+    public function fetchRaw(string $assetId): array
+    {
+        $bytes = $this->fetchLocation($this->resolveLocation($assetId));
+        return ['bytes' => $bytes, 'kind' => self::rbxKind($bytes)];
+    }
+
+    /** Tebak jenis file model Roblox dari header (biar bisa peringatkan kalau bukan animasi) */
+    public static function rbxKind(string $bytes): string
+    {
+        if (str_starts_with($bytes, "<roblox!")) {
+            // Binary .rbxm — cari nama ClassName KeyframeSequence di dalamnya
+            return str_contains($bytes, 'KeyframeSequence') ? 'animation' : 'model-bin';
+        }
+        if (str_starts_with($bytes, '<roblox') || str_starts_with($bytes, "\xEF\xBB\xBF<roblox")) {
+            return str_contains($bytes, 'KeyframeSequence') ? 'animation' : 'model-xml';
+        }
+        $info = self::detect($bytes);
+        return $info['kind'] ?? 'unknown';
+    }
+
     private function resolveLocation(string $assetId): string
     {
         // 1. Open Cloud (pakai API key → bisa akses aset privat milik kamu / grup kamu)
