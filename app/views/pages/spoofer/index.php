@@ -162,5 +162,34 @@ $isLoggedIn = Auth::check();
       <div class="sp-check-result" id="spGrantResult" hidden></div>
     </section>
 
+    <!-- ===== 5. ANIMATION → .rbxm ===== -->
+    <section class="sp-card sp-anim">
+      <div class="sp-results-head">
+        <h2 class="sp-card-title"><span>05</span> Animation → .rbxm</h2>
+        <p class="sp-progress-text" id="spAnimStatus"></p>
+      </div>
+      <p class="sp-grant-desc">
+        Tempel banyak <b>Animation ID</b> → tiap animasi diunduh jadi file <code>.rbxm</code> (bisa langsung banyak).
+        Upload-nya <b>manual di Studio</b>: drag file → klik kanan → <i>Save to Roblox</i> → copy ID baru.
+        (Roblox tidak menyediakan API untuk upload animation, jadi langkah ini tidak bisa otomatis.)
+      </p>
+      <textarea id="spAnimIds" class="sp-input sp-textarea sp-grant-ids" spellcheck="false"
+        placeholder="Satu Animation ID per baris / pisah koma. Bisa juga link rbxassetid:// atau roblox.com/...&#10;106898427663940&#10;rbxassetid://106898427663940"></textarea>
+      <p class="sp-hint" id="spAnimCount">0 ID terdeteksi</p>
+
+      <div class="sp-actions">
+        <button type="button" class="sp-start" id="spAnimStart" <?= $isLoggedIn ? "" : "disabled" ?>>Download semua</button>
+        <button type="button" class="sp-btn-ghost" id="spAnimZip" disabled>Download semua (.zip)</button>
+        <button type="button" class="sp-btn-ghost" id="spAnimClear">Bersihkan</button>
+      </div>
+
+      <div class="sp-table-wrap" id="spAnimTableWrap" hidden>
+        <table class="sp-table">
+          <thead><tr><th>#</th><th>Animation ID</th><th>Nama</th><th>Status</th><th>File</th></tr></thead>
+          <tbody id="spAnimRows"></tbody>
+        </table>
+      </div>
+    </section>
+
   </div>
 </main>

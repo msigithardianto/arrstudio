@@ -720,9 +720,104 @@
     $('spCopy').addEventListener('click', copyOutput);
     $('spDownload').addEventListener('click', downloadOutput);
 
+    if ($('spAnimStart')) {
+      $('spAnimStart').addEventListener('click', animStart);
+      $('spAnimZip').addEventListener('click', animZip);
+      $('spAnimClear').addEventListener('click', () => { if (!animRunning) { animItems = []; $('spAnimStatus').textContent = ''; renderAnim(); } });
+      $('spAnimIds').addEventListener('input', updateAnimCount);
+      updateAnimCount();
+    }
+
     files = [];
     updateCounts();
     renderAll();
+  }
+
+  /* ============================================================
+     ANIMATION → .rbxm (download massal; upload manual di Studio)
+     ============================================================ */
+  let animItems = [];   // { animId, status:'wait'|'run'|'ok'|'err', token?, filename?, size?, kind?, error? }
+  let animRunning = false;
+
+  function animDownloadUrl(token) {
+    return window.__apiUrls.spoof + '?action=anim_download&token=' + encodeURIComponent(token);
+  }
+
+  function renderAnim() {
+    const wrap = $('spAnimTableWrap'), body = $('spAnimRows');
+    if (!body) return;
+    wrap.hidden = animItems.length === 0;
+    body.innerHTML = animItems.map((it, i) => {
+      const st = it.status === 'err' ? esc(it.error || 'Gagal')
+        : it.status === 'ok' ? (it.kind === 'animation' ? 'Selesai' : 'Selesai (bukan animasi?)')
+        : it.status === 'run' ? 'Unduh…' : 'Antri';
+      const cls = it.status === 'ok' ? (it.kind === 'animation' ? 'ok' : 'run') : it.status;
+      return `<tr>
+        <td>${i + 1}</td>
+        <td class="sp-mono">${esc(it.animId)}</td>
+        <td>${it.filename ? esc(it.filename) : '—'}</td>
+        <td><span class="sp-status ${cls}">${st}${it.size ? ' · ' + (it.size / 1024).toFixed(1) + ' KB' : ''}</span></td>
+        <td>${it.token ? `<a class="sp-btn-ghost" style="height:30px;padding:0 12px;font-size:12px;text-decoration:none;display:inline-flex;align-items:center" href="${esc(animDownloadUrl(it.token))}" data-no-spa download>.rbxm</a>` : '—'}</td>
+      </tr>`;
+    }).join('');
+    const ok = animItems.filter(i => i.status === 'ok').length;
+    $('spAnimZip').disabled = animRunning || ok === 0;
+    $('spAnimZip').textContent = ok ? `Download semua (${ok}, .zip)` : 'Download semua (.zip)';
+    $('spAnimClear').disabled = animRunning;
+    if ($('spAnimStart')) $('spAnimStart').disabled = animRunning || !window.__isLoggedIn;
+  }
+
+  function animTriggerDownload(url) {
+    const a = document.createElement('a');
+    a.href = url; a.setAttribute('download', ''); a.setAttribute('data-no-spa', '');
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  async function animWorker(queue, apiKey) {
+    while (queue.length) {
+      const it = queue.shift();
+      it.status = 'run'; renderAnim();
+      try {
+        const data = await callApi({ action: 'anim', apiKey, animId: it.animId, name: it.name || '' });
+        Object.assign(it, { status: 'ok', token: data.token, filename: data.filename, size: data.size, kind: data.kind });
+      } catch (e) {
+        it.status = 'err'; it.error = e.message || 'Gagal';
+      }
+      renderAnim();
+    }
+  }
+
+  async function animStart() {
+    if (animRunning) return;
+    const apiKey = $('spApiKey').value.trim();
+    if (!apiKey) { $('spApiKey').focus(); return showToast('Isi API key Roblox dulu (card 01)', 'error'); }
+    const parsed = parseIds($('spAnimIds').value);
+    if (!parsed.length) return showToast('Tempel minimal 1 Animation ID', 'error');
+    saveSettings();
+
+    animItems = parsed.map(x => ({ animId: x.id, name: x.name || '', status: 'wait' }));
+    animRunning = true;
+    $('spAnimStatus').textContent = 'Mengunduh…';
+    renderAnim();
+    const queue = animItems.slice();
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, () => animWorker(queue, apiKey)));
+    animRunning = false;
+    const ok = animItems.filter(i => i.status === 'ok').length;
+    $('spAnimStatus').textContent = `${ok}/${animItems.length} animasi terunduh`;
+    renderAnim();
+    showToast(`${ok}/${animItems.length} animasi jadi .rbxm`, ok === animItems.length ? 'success' : 'warning', 3500);
+  }
+
+  function animZip() {
+    const tokens = animItems.filter(i => i.status === 'ok' && i.token).map(i => i.token);
+    if (!tokens.length) return showToast('Belum ada file', 'warning');
+    animTriggerDownload(window.__apiUrls.spoof + '?action=anim_zip&tokens=' + tokens.join(','));
+    showToast('Menyiapkan ZIP…');
+  }
+
+  function updateAnimCount() {
+    if (!$('spAnimIds')) return;
+    $('spAnimCount').textContent = parseIds($('spAnimIds').value).length + ' ID terdeteksi';
   }
 
   window.initSpoofer = initSpoofer;
