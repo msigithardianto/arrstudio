@@ -63,8 +63,11 @@ $isLoggedIn = Auth::check();
             <li>Access Permissions: tambah <b>Assets</b> (<code>asset:read</code>, <code>asset:write</code>) dan <b>Legacy Assets</b> (<code>legacy-asset:manage</code>) untuk download dari asset ID.
               Untuk "Izinkan ke game" tambah juga <b>asset-permissions</b> (<code>asset-permissions:write</code>).</li>
             <li>Accepted IP: isi IP server ini, atau <code>0.0.0.0/0</code> untuk testing.</li>
-            <li>Untuk upload ke grup, API key harus dibuat dari grup tersebut.</li>
-            <li>User ID ada di URL profil: roblox.com/users/<b>123456</b>/profile.</li>
+            <li><b>Upload ke grup?</b> Roblox menyarankan tetap pakai <b>User API Key</b> (dari akunmu), bukan Group API Key.
+              Syaratnya akunmu punya izin di grup (role <i>Owner</i> / bisa <i>Create &amp; Edit Assets</i>). Lalu di atas pilih
+              <b>Upload ke → Group</b> dan isi <b>Group ID</b>.</li>
+            <li>User ID ada di URL profil: roblox.com/users/<b>123456</b>/profile.
+              Group ID ada di URL grup: roblox.com/communities/<b>123456</b>/nama.</li>
           </ol>
           <p>API key hanya diteruskan ke Roblox, tidak disimpan di server.</p>
         </details>
